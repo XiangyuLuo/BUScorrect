@@ -1,0 +1,223 @@
+\documentclass[12pt]{article}
+%!Rnw weave = knitr 
+%\VignetteEngine{knitr::knitr}
+%\VignetteIndexEntry{BUScorrect_user_guide} 
+\usepackage[sc]{mathpazo}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\geometry{verbose,tmargin=2.5cm,bmargin=2.5cm,lmargin=2.5cm,rmargin=2.5cm}
+\setcounter{secnumdepth}{2}
+\setcounter{tocdepth}{2}
+\usepackage{url}
+\usepackage[numbers]{natbib}
+\usepackage[unicode=true,pdfusetitle,
+ bookmarks=true,bookmarksnumbered=true,bookmarksopen=true,bookmarksopenlevel=2,
+ breaklinks=false,pdfborder={0 0 1},backref=false,colorlinks=false]
+ {hyperref}
+\hypersetup{
+ pdfstartview={XYZ null null 1}}
+\usepackage{breakurl}
+
+\begin{document}
+<<setup, include=FALSE, cache=FALSE>>=
+library(knitr)
+# set global chunk options
+opts_chunk$set(fig.path='figure/minimal-', fig.align='center', fig.show='hold')
+options(formatR.arrow=TRUE,width=90)
+@
+
+
+\title{BUScorrect: Batch Effects Correction with Unknown
+Subtypes\\
+User's Guide}
+
+\author{Xiangyu Luo, Yingying Wei}
+
+\maketitle
+\section{Introduction}
+High-throughput experimental data are accumulating exponentially in public databases. 
+However, mining valid scientific discoveries from these abundant resources is hampered by technical artifacts and inherent biological heterogeneity. 
+The former are usually termed ``batch effects,'' and the latter is often modelled by subtypes. \\
+
+
+\noindent Researchers have long been aware that samples generated on different days are not directly comparable. 
+Samples processed at the same time are usually referred to as coming from the same ``batch.'' 
+Even when the same biological conditions are measured, data from different batches can present very different patterns. 
+The variation among different batches may be due to changes in laboratory conditions, preparation time, reagent lots, and experimenters \citep{leek2010tackling}. 
+The effects caused by these systematic factors are called ``batch effects.'' \\
+
+
+\noindent Various ``batch effects'' correction methods have been proposed when the subtype information for each sample is known \citep{johnson2007adjusting, leek2007capturing}. 
+Here we adopt a ``broad'' definition for ``subtype.'' ``Subtype'' is defined as a set of samples that share the same underlying genomic profile, 
+in other words biological variability, when measured with no technical artifacts. 
+For instance, groupings such as ``case'' and ``control'' can be viewed as two subtypes. 
+However, subtype information is usually unknown, and it is often the main interest of the study to learn the subtype for each collected sample, 
+especially in personalized medicine.\\
+
+\noindent Here, the R package \texttt{BUScorrect} fits a Bayesian hierarchical model---the Batch-effects-correction-with-Unknown-Subtypes model (BUS)---to correct batch effects in the presence of unknown subtypes \citep{xxx2018xxx}. 
+BUS is capable of (a) correcting batch effects explicitly, (b) grouping samples that share similar characteristics into subtypes, 
+(c) identifying features that distinguish subtypes, and (d) enjoying a linear-order computation complexity. 
+After correcting the batch effects with BUS, the corrected value can be used for other analysis as if all samples are measured in a single batch. 
+BUS can integrate batches measured from different platforms and allow subtypes to be measured in some but not all of the batches as long as the experimental design fulfils the conditions listed in \citep{xxx2018xxx}.\\
+
+\noindent This guide provides step-by-step instructions for applying the BUS model to correct batch effects and identify the unknown subtype information for each sample. \\          
+
+\section{Data Preparation}
+\noindent To fit the BUS model, one needs to call the function \texttt{BUSgibbs}.  The first argument, \texttt{Data}, of \texttt{BUSgibbs} should be a list with its length equal to the batch number. Each element of \texttt{Data} is a data matrix for a specific batch,
+ where each row corresponds to a gene or a genomic feature and each column corresponds to a sample. 
+ The second argument, \texttt{n.subtypes}, is the number of subtypes among samples, which needs to be specified by the user in advance. 
+ As discussed later, if \texttt{n.subtypes} is unknown, we can vary the subtype number and use BIC to select the optimal number. 
+ The third argument, \texttt{n.iterations}, is the total number of iterations to run by the Gibbs sampler for posterior inference of the BUS model.
+ The first \texttt{n.iterations}/2 iterations are treated as burn-in, and posterior samples from the second \texttt{n.iterations}/2 iterations 
+ are kept for statistical inference. The fourth argument, \texttt{showIteration}, lets the user decide whether \texttt{BUSgibbs} should 
+ display the number of iterations that have been run. The users can run the Gibbs Sampler with different initial values by setting different values to the argument \texttt{seed}.\\
+
+<<data_preparation>>=
+library(BUScorrect)
+data("BUSexample_data", package="BUScorrect")
+
+#BUSexample_data is a list
+class(BUSexample_data)
+
+#The list's length is three, thus we have three batches
+length(BUSexample_data)
+
+#Each element of the list is a matrix 
+class(BUSexample_data[[1]])
+
+#In the matrix, a row is a gene, and a column corresponds to a sample
+dim(BUSexample_data[[1]])
+dim(BUSexample_data[[2]])
+dim(BUSexample_data[[3]])
+
+#Look at the expression data
+head(BUSexample_data[[1]][ ,1:4])
+@
+
+\noindent The example data \texttt{BUSexample\_data} consist of 3 batches. In total, 2000 genes are measured. 
+The sample sizes of each batch are 70, 80, and 70, respectively. 
+Because it is a simulation data set, we know that all of the samples come from 3 subtypes.
+
+\section{Model Fitting}
+\noindent Once we have prepared the input data and specified the subtype number, we are able to fit the BUS model.\\ 
+<<BUSgibbs>>=
+BUSfits <- BUSgibbs(Data = BUSexample_data, n.subtypes = 3, n.iterations = 300, 
+						showIteration = FALSE, seed=123)
+@
+
+\noindent  The \texttt{summary} command provides an overview of the output object \texttt{BUSfits} from \texttt{BUSgibbs}.  
+\texttt{BUSfits} collects all the posterior samples and posterior estimates for the intrinsic gene indicators, the subtype class for each sample, 
+the subtype proportions for each batch, the baseline expression levels, the subtype effects, the location batch effects, and the scale batch effects.\\
+
+<<BUSfits>>=
+summary(BUSfits)
+@
+
+\section{Estimated Subtypes and Batch Effects}
+Our main interests lie in the estimation of the subtype class for each sample and the batch effects. We can call the \texttt{Subtypes} function to extract the subtype information from \texttt{BUSfits}.\\
+
+<<Subtypes>>=
+est_subtypes <- Subtypes(BUSfits)
+@ 
+
+\noindent There is a message from the function \texttt{Subtypes} to remind the user of the format of \texttt{est\_subtypes}. \texttt{est\_subtypes} is a list of length 3, corresponding to the three batches in the study. 
+\texttt{est\_subtypes[[1]]} shows the subtype for each of the 70 samples on batch 1. \\
+
+\noindent Similarly, you can call \texttt{location\_batch\_effects} and \texttt{scale\_batch\_effects} functions to get the estimated location and scale batch effects.\\
+
+<<BatchEffects>>=  
+est_location_batch_effects <- location_batch_effects(BUSfits)
+head(est_location_batch_effects)
+est_scale_batch_effects <- scale_batch_effects(BUSfits)
+head(est_scale_batch_effects)
+@
+
+\noindent The first batch is taken as the reference batch, therefore its location batch effects are zeros for all the genes and its scale batch effects are all ones.\\
+
+\noindent The subtype effects can be obtained by the \texttt{subtype\_effects} function. Notice that the first subtype is taken as the baseline subtype.\\
+
+<<SubtypeEffects>>=
+est_subtype_effects <- subtype_effects(BUSfits)
+@
+\section{Intrinsic Gene Identification}
+The intrinsic genes are the genes that differentiate subtypes \citep{huo2016meta}. We use the following functions to identify the intrinsic genes by controlling the false discovery rate.\\
+
+<<IG>>=
+#select posterior probability threshold to identify the intrinsic gene indicators
+thr0 <- postprob_DE_thr_fun(BUSfits, fdr_threshold=0.01)
+est_L <- estimate_IG_indicators(BUSfits, postprob_DE_threshold=thr0)
+
+#obtain the intrinsic gene indicators
+intrinsic_gene_indices <- IG_index(est_L)
+@
+
+\noindent The function \texttt{postprob\_DE\_thr\_fun} calculates the best posterior probability threshold that results in a false discovery rate less than \texttt{fdr\_threshold}. 
+\texttt{postprob\_DE\_thr\_fun} also gives the user a message about the selected posterior probability threshold. 
+\texttt{estimate\_IG\_indicators} then obtain the selected threshold to estimate intrinsic gene indicators. 
+Finally, one can obtain the intrinsic gene indices by calling the function \texttt{IG\_index}. \\
+
+\noindent The \texttt{postprob\_DE} function calculates the posterior probability of being differentially expressed for genes in subtypes $k$ ($k\geq 2$). 
+<<>>=
+postprob_DE_matr <- postprob_DE(BUSfits)
+@
+
+\section{Visualize the Adjusted Genomic Data}
+The function \texttt{adjusted\_values} adjusts  the batch effects for the original data. 
+
+<<adjusted>>=
+adjusted_data <- adjusted_values(BUSfits, BUSexample_data)
+@
+
+\noindent The message is a reminder of the output format. Subsequently, we can compare the original data suffering from batch effects and the adjusted data with the batch effects removed.\\
+
+\noindent The function \texttt{visualize\_data} plots a heatmap for the expression values across batches. The user can specify the argument \texttt{gene\_ind\_set}, which is a vector, to select the genes to be displayed in the heatmap.
+
+\newpage
+<<visualize1>>=
+#only show the first 100 genes
+visualize_data(BUSexample_data, title_name = "original expression values", 
+								gene_ind_set = 1:100) 
+
+#try the following command to show the whole set of genes
+#visualize_data(BUSexample_data, title_name = "original expression values", 
+#								gene_ind_set = 1:2000) 
+@
+
+\newpage
+<<visualize2>>=
+#only show the first 100 genes
+visualize_data(adjusted_data, title_name = "adjusted expression values", 
+								gene_ind_set = 1:100) #for the first 100 genes
+								
+#try the following command to show the whole set of genes
+#visualize_data(adjusted_data, title_name = "original expression values", 
+#								gene_ind_set = 1:2000) 
+@
+
+\noindent In these two heatmaps,  the top bar indicates the batch origin for each sample. Samples under the same colour are from the same batch. The batch effects present in the original data are correctly removed, and only the biological variability is kept.
+
+\section{Model Selection using BIC}
+If we have no prior knowledge about the subtype number, we can vary the argument \texttt{n.subtypes} in the function \texttt{BUSgibbs}, e.g., from 2 to 10 and identify the underlying true subtype number K as the one that achieves the minimal BIC. \\
+
+\noindent In BUScorrect R package, one can obtain the BIC value as follows.\\
+
+<<bic>>=
+BIC_val <- BIC_BUS(BUSfits)
+@ 
+ 
+\noindent In this example, the underlying true subtype number is three. For an illustration, we vary the \texttt{n.subtypes} from 2 to 4.
+<<selection>>=
+BIC_values <- NULL
+for(k in 2:4){
+	BUSfits <- BUSgibbs(Data = BUSexample_data, n.subtypes = k, n.iterations = 300, 
+						showIteration = FALSE, seed=123)
+	BIC_values <- c(BIC_values, BIC_BUS(BUSfits))
+}
+plot(2:4, BIC_values, xlab="subtype number", ylab="BIC", main="BIC plot", type="b")
+@
+
+\noindent The BIC attains the minimum at \texttt{n.subtypes}$=3$, thus correctly recovering the true subtype number.
+
+\bibliographystyle{unsrt}
+\bibliography{user_guide}
+\end{document}
