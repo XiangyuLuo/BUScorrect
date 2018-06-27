@@ -2,9 +2,8 @@
 
 #the main function
 BUSgibbs <- function(Data, n.subtypes, n.iterations = 500, n.records = floor(n.iterations / 2),  hyperparameters = 
-			c(1, sqrt(5), sqrt(5), 2, 2, 1, 2, 0.005, 1, 3, 10), seed = 123, showIteration = TRUE ){
+			c(1, sqrt(5), sqrt(5), 2, 2, 1, 2, 0.005, 1, 3, 10), showIteration = TRUE ){
 
-set.seed(seed) 
 
 #########################################################################################################################
 # Functions for sampling Dirichlet distribution and Inverse Gamma distribution
@@ -473,7 +472,7 @@ return(output)
 	
 #calculate posterior probability of being differentially expressed for gene g in subtype k (k>=2) compared to subtype 1	
 postprob_DE <- function(BUSfits){
-	if(class(BUSfits)!="BUSfits"){
+	if(!is(BUSfits, "BUSfits")){
 		stop("BUSfits should be in the \"BUSfits\" class.\n")
 	}
 	L_PosterSamp <- BUSfits$L_PosterSamp
@@ -498,7 +497,7 @@ postprob_DE <- function(BUSfits){
 
 postprob_DE_thr_fun <- function(BUSfits, fdr_threshold=0.1){
 	#find posterior probability threshold to control FDR
-	if(class(BUSfits)!="BUSfits"){
+	if(!is(BUSfits, "BUSfits")){
 		stop("BUSfits should be in the \"BUSfits\" class.\n")
 	}
 	L_PosterSamp <- BUSfits$L_PosterSamp
@@ -518,7 +517,7 @@ postprob_DE_thr_fun <- function(BUSfits, fdr_threshold=0.1){
 	}
 
 	postprob_DE2 <- function(BUSfits){
-		if(class(BUSfits)!="BUSfits"){
+		if(!is(BUSfits, "BUSfits")){
 			stop("BUSfits should be in the \"BUSfits\" class.\n")
 		}
 		L_PosterSamp <- BUSfits$L_PosterSamp
@@ -555,7 +554,7 @@ postprob_DE_thr_fun <- function(BUSfits, fdr_threshold=0.1){
 
 #estimate intrinsic gene indicators
 estimate_IG_indicators <- function(BUSfits, postprob_DE_threshold = 0.5){
-	if(class(BUSfits)!="BUSfits"){
+	if(!is(BUSfits, "BUSfits")){
 		stop("BUSfits should be in the \"BUSfits\" class.\n")
 	}
 	L_PosterSamp <- BUSfits$L_PosterSamp
@@ -590,7 +589,7 @@ IG_index <- function(EstIGindicators){
 #########################################################################################################################
 
 adjusted_values <- function(BUSfits, original_data){
-	if(class(BUSfits)!="BUSfits"){
+	if(!is(BUSfits, "BUSfits")){
 		stop("BUSfits should be in the \"BUSfits\" class.\n")
 	}
 	Y0 <- original_data
@@ -629,7 +628,7 @@ adjusted_values <- function(BUSfits, original_data){
 # Useful Outputs from BUSfits
 #########################################################################################################################
 Subtypes <- function(BUSfits){
-	if(class(BUSfits)!="BUSfits"){
+	if(!is(BUSfits, "BUSfits")){
 		stop("BUSfits should be in the \"BUSfits\" class.\n")
 	}
 	B <- length(BUSfits$Subtypes)
@@ -643,7 +642,7 @@ Subtypes <- function(BUSfits){
 }
 
 baseline_expression_values <- function(BUSfits){
-	if(class(BUSfits)!="BUSfits"){
+	if(!is(BUSfits, "BUSfits")){
 		stop("BUSfits should be in the \"BUSfits\" class.\n")
 	}	
 	cat("The output format is a vector.\n")
@@ -651,7 +650,7 @@ baseline_expression_values <- function(BUSfits){
 }
 
 subtype_effects <- function(BUSfits){
-	if(class(BUSfits)!="BUSfits"){
+	if(!is(BUSfits, "BUSfits")){
 		stop("BUSfits should be in the \"BUSfits\" class.\n")
 	}
 	cat("The output format is a matrix.\n")
@@ -661,7 +660,7 @@ subtype_effects <- function(BUSfits){
 }
 
 location_batch_effects <- function(BUSfits){
-	if(class(BUSfits)!="BUSfits"){
+	if(!is(BUSfits, "BUSfits")){
 		stop("BUSfits should be in the \"BUSfits\" class.\n")
 	}
 	cat("The output format is a matrix.\n")
@@ -670,7 +669,7 @@ location_batch_effects <- function(BUSfits){
 }
 
 scale_batch_effects <- function(BUSfits){
-	if(class(BUSfits)!="BUSfits"){
+	if(!is(BUSfits, "BUSfits")){
 		stop("BUSfits should be in the \"BUSfits\" class.\n")
 	}
 	G <- nrow(BUSfits$sigma_sq)
