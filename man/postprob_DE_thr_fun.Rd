@@ -57,8 +57,8 @@ example_Data[[2]] <- rbind(matrix(c(1,1,5,5,10,10,
 batch3_effect <- c(3,2,1,1,2)
 example_Data[[3]] <- rbind(matrix(c(1,1,5,5,10,10,
 						3,3,7,7,12,12), ncol=6, byrow=TRUE), matrix(c(1,2),nrow=18, ncol=6)) + batch3_effect
-
-BUSfits <- BUSgibbs(example_Data, n.subtypes = 3, n.iterations = 100, showIteration = FALSE, seed=123)
+set.seed(123)
+BUSfits <- BUSgibbs(example_Data, n.subtypes = 3, n.iterations = 100, showIteration = FALSE)
 #select kappa to estimate intrinsic gene indicators
 thr0 <- postprob_DE_thr_fun(BUSfits, fdr_threshold=0.1)
 est_L <- estimate_IG_indicators(BUSfits, postprob_DE_threshold=thr0)

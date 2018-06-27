@@ -115,8 +115,8 @@ for(b in 1:B){				#generate data
 ###############################################################################
 #Apply the BUSgibbs Function
 ###############################################################################
-
-BUSfits <- BUSgibbs(example_Data, n.subtypes = 3, n.iterations = 100, showIteration = FALSE, seed=123)
+set.seed(123)
+BUSfits <- BUSgibbs(example_Data, n.subtypes = 3, n.iterations = 100, showIteration = FALSE)
 summary(BUSfits)
 
 

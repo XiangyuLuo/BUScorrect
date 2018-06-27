@@ -10,7 +10,7 @@ The function "BUSgibbs" stands for fitting the Batch effects correction with Unk
 \usage{
 BUSgibbs(Data, n.subtypes, n.iterations = 500, n.records = floor(n.iterations/2), 
 		 hyperparameters = c(1, sqrt(5), sqrt(5), 2, 2, 1, 2, 0.005, 1, 3, 10), 
-		 seed = 123, showIteration = TRUE)
+		 showIteration = TRUE)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -39,9 +39,7 @@ BUSgibbs(Data, n.subtypes, n.iterations = 500, n.records = floor(n.iterations/2)
 	\code{(a_p, b_p)}: parameters in the beta prior for p;
 	\code{tau_{mu1}}: the standard deviation of the normal prior of mu_{gk} (k >= 2) when the gene expression level in subtype k is different from that in subtype one.
 }
-  \item{seed}{
-	Different \code{seed} values allow the user to run the Gibbs sampler with different initial values.
-}
+  
   \item{showIteration}{
 	If TRUE, the iteration number will be displayed when conducting Gibbs sampler. The default is TRUE. 
 }
@@ -175,8 +173,8 @@ for(b in 1:B){				#generate data
 ###############################################################################
 #Apply the BUSgibbs Function
 ###############################################################################
-
-BUSfits <- BUSgibbs(example_Data, n.subtypes = 3, n.iterations = 100, showIteration = FALSE, seed=123)
+set.seed(123)
+BUSfits <- BUSgibbs(example_Data, n.subtypes = 3, n.iterations = 100, showIteration = FALSE)
 
 
 }
