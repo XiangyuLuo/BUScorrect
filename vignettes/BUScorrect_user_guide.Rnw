@@ -101,8 +101,9 @@ Because it is a simulation data set, we know that all of the samples come from 3
 \section{Model Fitting}
 \noindent Once we have prepared the input data and specified the subtype number, we are able to fit the BUS model.\\ 
 <<BUSgibbs>>=
+set.seed(123)
 BUSfits <- BUSgibbs(Data = BUSexample_data, n.subtypes = 3, n.iterations = 300, 
-						showIteration = FALSE, seed=123)
+						showIteration = FALSE)
 @
 
 \noindent  The \texttt{summary} command provides an overview of the output object \texttt{BUSfits} from \texttt{BUSgibbs}.  
@@ -209,8 +210,9 @@ BIC_val <- BIC_BUS(BUSfits)
 <<selection>>=
 BIC_values <- NULL
 for(k in 2:4){
+	set.seed(123)
 	BUSfits <- BUSgibbs(Data = BUSexample_data, n.subtypes = k, n.iterations = 300, 
-						showIteration = FALSE, seed=123)
+						showIteration = FALSE)
 	BIC_values <- c(BIC_values, BIC_BUS(BUSfits))
 }
 plot(2:4, BIC_values, xlab="subtype number", ylab="BIC", main="BIC plot", type="b")
