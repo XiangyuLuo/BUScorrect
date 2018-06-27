@@ -1,11 +1,11 @@
 Package: BUScorrect
 Type: Package
 Title: Batch Effects Correction with Unknown Subtypes
-Version: 0.99.0
+Version: 0.99.1
 Date: 2018-06-07
 Author: Xiangyu Luo <xyluo1991@gmail.com>, Yingying Wei <yweicuhk@gmail.com>
 Maintainer: Xiangyu Luo <xyluo1991@gmail.com>
-Depends: R (>= 3.2.4)
+Depends: R (>= 3.5)
 Description: The package implements the BUS model which corrects batch effects when there exist samples with unknown subtypes.
 Imports: gplots
 Suggests: knitr 
