@@ -1,6 +1,5 @@
 \name{BIC_BUS}
 \alias{BIC_BUS}
-%- Also NEED an '\alias' for EACH other topic documented here.
 \title{
 Obtain BIC form the output by BUSgibbs
 }
@@ -10,7 +9,7 @@ The BIC value can be used to determine the subtype number if it is unknown to th
 \usage{
 BIC_BUS(BUSfits)
 }
-%- maybe also 'usage' for other objects documented here.
+
 \arguments{
   \item{BUSfits}{
 The BUSfits object from the function \code{BUSgibbs}.
@@ -54,6 +53,5 @@ BUSfits <- BUSgibbs(example_Data, n.subtypes = 3, n.iterations = 100, showIterat
 BIC_val <- BIC_BUS(BUSfits)
 
 }
-% Add one or more standard keywords, see file 'KEYWORDS' in the
-% R documentation directory.
+
 

@@ -1,15 +1,15 @@
 Package: BUScorrect
 Type: Package
 Title: Batch Effects Correction with Unknown Subtypes
-Version: 0.99.2
+Version: 0.99.3
 Date: 2018-06-07
 Author: Xiangyu Luo <xyluo1991@gmail.com>, Yingying Wei <yweicuhk@gmail.com>
 Maintainer: Xiangyu Luo <xyluo1991@gmail.com>
-Depends: R (>= 3.5)
-Description: The package implements the BUS model which corrects batch effects when there exist samples with unknown subtypes.
-Imports: gplots
-Suggests: knitr 
+Depends: R (>= 3.5.0)
+Description: High-throughput experimental data are accumulating exponentially in public databases. However, mining valid scientific discoveries from these abundant resources is hampered by technical artifacts and inherent biological heterogeneity. The former are usually termed "batch effects," and the latter is often modelled by "subtypes." The R package BUScorrect fits a Bayesian hierarchical model, the Batch-effects-correction-with-Unknown-Subtypes model (BUS), to correct batch effects in the presence of unknown subtypes. BUS is capable of (a) correcting batch effects explicitly, (b) grouping samples that share similar characteristics into subtypes, (c) identifying features that distinguish subtypes, and (d) enjoying a linear-order computation complexity.   
+Imports: gplots, methods, grDevices, stats, SummarizedExperiment
+VignetteBuilder: knitr
+Suggests: BiocStyle, knitr, RUnit, BiocGenerics 
 biocViews: GeneExpression, StatisticalMethod, Bayesian, Clustering, FeatureExtraction, BatchEffect
 LazyLoad: yes 
-VignetteBuilder: knitr
 License: GPL (>= 2)

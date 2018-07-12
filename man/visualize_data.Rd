@@ -1,6 +1,6 @@
 \name{visualize_data}
 \alias{visualize_data}
-%- Also NEED an '\alias' for EACH other topic documented here.
+
 \title{
 Visualize the gene expression data from multiple batches
 }
@@ -8,7 +8,7 @@ Visualize the gene expression data from multiple batches
 \usage{
 visualize_data(Data, title_name="Heatmap", gene_ind_set, color_key_range=seq(-0.5,8.5,1))
 }
-%- maybe also 'usage' for other objects documented here.
+
 \arguments{
   \item{Data}{
 	The gene expression data, an R list with length equal to the batch number. Each of its element is a gene expression matrix, where rows are genes and columns represent samples.
@@ -31,15 +31,7 @@ Xiangyu Luo, Yingying Wei. Batch Effects Correction with Unknown Subtypes. Journ
 \author{
   Xiangyu Luo
 }
-%\note{
-%%  ~~further notes~~
-%}
 
-%% ~Make other sections like Warning with \section{Warning }{....} ~
-
-%\seealso{
-%% ~~objects to See Also as \code{\link{help}}, ~~~
-%}
 \examples{
 rm(list = ls(all = TRUE))  
 set.seed(123)

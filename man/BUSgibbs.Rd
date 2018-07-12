@@ -1,6 +1,5 @@
 \name{BUSgibbs}
 \alias{BUSgibbs}
-%- Also NEED an '\alias' for EACH other topic documented here.
 \title{
 Batch Effects Correction and Subtype Discovery using Gibbs Sampler 
 }
@@ -12,10 +11,10 @@ BUSgibbs(Data, n.subtypes, n.iterations = 500, n.records = floor(n.iterations/2)
 		 hyperparameters = c(1, sqrt(5), sqrt(5), 2, 2, 1, 2, 0.005, 1, 3, 10), 
 		 showIteration = TRUE)
 }
-%- maybe also 'usage' for other objects documented here.
+
 \arguments{
   \item{Data}{
-	\code{Data} is an R list with the length equal to the batch number. The \code{b}th element of \code{Data} is the gene expression matrix in batch \code{b}, where the rows correspond to genes and the columns represent samples. 
+	\code{Data} is either an R list or a SummarizedExperiment object. If \code{Data} is an R list, it has the length equal to the batch number. The \code{b}th element of \code{Data} is the gene expression matrix in batch \code{b}, where the rows correspond to genes and the columns represent samples. If \code{Data} is a SummarizedExperiment object, \code{assays(Data)} must contain a gene expression matrix named "GE_matr", where one row represents a gene and one column corresponds to a sample. \code{colData(Data)} must include a vector named "Batch", which indicates the batch information for each sample.   
 }
   \item{n.subtypes}{
 	\code{n.subtypes} is the subtype number, which needs to be specified by the user.
@@ -68,15 +67,7 @@ Xiangyu Luo, Yingying Wei. Batch Effects Correction with Unknown Subtypes. Journ
 \author{
   Xiangyu Luo
 }
-%\note{
-%%  ~~further notes~~
-%}
 
-%% ~Make other sections like Warning with \section{Warning }{....} ~
-
-%\seealso{
-%% ~~objects to See Also as \code{\link{help}}, ~~~
-%}
 \examples{
 ###############################################################################
 #Generate Simulation Data
@@ -178,8 +169,7 @@ BUSfits <- BUSgibbs(example_Data, n.subtypes = 3, n.iterations = 100, showIterat
 
 
 }
-% Add one or more standard keywords, see file 'KEYWORDS' in the
-% R documentation directory.
+
 \keyword{ Batch Effects }
 \keyword{ Subtype Discovery }
 \keyword{ Gibbs Sampler}

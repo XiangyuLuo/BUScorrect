@@ -1,6 +1,6 @@
 \name{postprob_DE_thr_fun}
 \alias{postprob_DE_thr_fun}
-%- Also NEED an '\alias' for EACH other topic documented here.
+
 \title{
 Select the the posterior probability threshold to control the false discovery rate
 }
@@ -8,7 +8,7 @@ Select the the posterior probability threshold to control the false discovery ra
 \usage{
 postprob_DE_thr_fun(BUSfits, fdr_threshold = 0.1)
 }
-%- maybe also 'usage' for other objects documented here.
+
 \arguments{
   \item{BUSfits}{
 The BUSfits object output by the function \code{BUSgibbs}.
@@ -17,9 +17,7 @@ The BUSfits object output by the function \code{BUSgibbs}.
 the false discovery rate level we want to control.
 }
 }
-%\details{
-%%  ~~ If necessary, more details than the description above ~~
-%}
+
 \value{
 \item{thre0}{the posterior probability threshold that controls the false discovery rate.}
 }
@@ -29,15 +27,7 @@ Xiangyu Luo, Yingying Wei. Batch Effects Correction with Unknown Subtypes. Journ
 \author{
   Xiangyu Luo
 }
-%note{
-%%  ~~further notes~~
-%}
 
-%% ~Make other sections like Warning with \section{Warning }{....} ~
-
-%\seealso{
-%% ~~objects to See Also as \code{\link{help}}, ~~~
-%}
 \examples{
 rm(list = ls(all = TRUE))  
 set.seed(123)
@@ -66,6 +56,5 @@ est_L <- estimate_IG_indicators(BUSfits, postprob_DE_threshold=thr0)
 #obtain the intrinsic gene indicators
 intrinsic_gene_indices <- IG_index(est_L)
 }
-% Add one or more standard keywords, see file 'KEYWORDS' in the
-% R documentation directory.
+
 

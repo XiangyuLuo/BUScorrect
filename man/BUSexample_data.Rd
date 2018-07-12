@@ -1,14 +1,11 @@
 \name{BUSexample_data}
 \alias{BUSexample_data}
-%- Also NEED an '\alias' for EACH other topic documented here.
+
 \title{
 A simulated data set
 }
 \description{A simulated data set for demonstrating how to use the BUScorrect package}
 
-%\seealso{
-%% ~~objects to See Also as \code{\link{help}}, ~~~
-%}
 \examples{
 \dontrun{
 #This data set is simulated according to the following R code
@@ -103,7 +100,4 @@ for(b in 1:B){				#generate data
 BUSexample_data <- example_Data
 }
 }
-% Add one or more standard keywords, see file 'KEYWORDS' in the
-% R documentation directory.
-%\keyword{ ~kwd1 }% use one of  RShowDoc("KEYWORDS")
-%\keyword{ ~kwd2 }% __ONLY ONE__ keyword per line
+

@@ -1,6 +1,6 @@
 \name{summary.BUSfits}
 \alias{summary.BUSfits}
-%- Also NEED an '\alias' for EACH other topic documented here.
+
 \title{
 Summary the output by \code{BUSgibbs}
 }
@@ -8,7 +8,7 @@ Summary the output by \code{BUSgibbs}
 \usage{
 \method{summary}{BUSfits}(object, ...)
 }
-%- maybe also 'usage' for other objects documented here.
+
 \arguments{
   \item{object}{
 The BUSfits object output by the function \code{BUSgibbs}.
@@ -45,6 +45,5 @@ BUSfits <- BUSgibbs(example_Data, n.subtypes = 3, n.iterations = 100, showIterat
 summary(BUSfits)
 
 }
-% Add one or more standard keywords, see file 'KEYWORDS' in the
-% R documentation directory.
+
 

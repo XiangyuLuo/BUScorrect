@@ -1,6 +1,5 @@
 \name{calculate_EPSR_sigma_sq}
 \alias{calculate_EPSR_sigma_sq}
-%- Also NEED an '\alias' for EACH other topic documented here.
 \title{
 Calculate the estimated potential scale reduction factors (EPSR factors) for the variances of expression values 
 }
@@ -10,7 +9,7 @@ When Gibbs sampler attains stationary, the distances between multiple chains (wi
 \usage{
 calculate_EPSR_sigma_sq(sigma_sq_PosterSamp_chain1, sigma_sq_PosterSamp_chain2)
 }
-%- maybe also 'usage' for other objects documented here.
+
 \arguments{
   \item{sigma_sq_PosterSamp_chain1}{
 	posterior samples of variances from chain 1. 
@@ -19,30 +18,20 @@ calculate_EPSR_sigma_sq(sigma_sq_PosterSamp_chain1, sigma_sq_PosterSamp_chain2)
 	posterior samples of variances from chain 2.
 }
 }
-%\details{
-%%  ~~ If necessary, more details than the description above ~~
-%}
+
 \value{
 \item{EPSR_sigma_sq}{The EPSR factors for sigma_sq, a G by B matrix.}
 }
-%\references{
-%% ~put references to the literature/web site here ~
-%}
+
 \author{
   Xiangyu Luo
 }
-%\note{
-%%  ~~further notes~~
-%}
 
-%% ~Make other sections like Warning with \section{Warning }{....} ~
+\examples{
+#2 batches, 10 genes, 100 posterior samples per parameter
+chain1 <- 1+array(rnorm(10*2*100,sd=0.05), dim=c(2,10,100))
+chain2 <- 1+array(rnorm(10*2*100,sd=0.05), dim=c(2,10,100))
+calculate_EPSR_sigma_sq(chain1,chain2)
+}
 
-%\seealso{
-%% ~~objects to See Also as \code{\link{help}}, ~~~
-%}
-%\examples{
-
-%}
-% Add one or more standard keywords, see file 'KEYWORDS' in the
-% R documentation directory.
 \keyword{ EPSR factors }

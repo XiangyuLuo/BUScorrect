@@ -1,6 +1,6 @@
 \name{baseline_expression_values}
 \alias{baseline_expression_values}
-%- Also NEED an '\alias' for EACH other topic documented here.
+
 \title{
 Obtain the baseline expression values from the output by BUSgibbs
 }
@@ -8,15 +8,13 @@ Obtain the baseline expression values from the output by BUSgibbs
 \usage{
 baseline_expression_values(BUSfits)
 }
-%- maybe also 'usage' for other objects documented here.
+
 \arguments{
   \item{BUSfits}{
 The BUSfits object output by the function \code{BUSgibbs}.
 }
 }
-%\details{
-%%  ~~ If necessary, more details than the description above ~~
-%}
+
 \value{
 \item{est_baseline_expression_values}{The estimated baseline expression values for subtype 1, a vector with length equal to the gene number.}
 }
@@ -26,15 +24,7 @@ Xiangyu Luo, Yingying Wei. Batch Effects Correction with Unknown Subtypes. Journ
 \author{
   Xiangyu Luo
 }
-%\note{
-%%  ~~further notes~~
-%}
 
-%% ~Make other sections like Warning with \section{Warning }{....} ~
-
-%\seealso{
-%% ~~objects to See Also as \code{\link{help}}, ~~~
-%}
 \examples{
 rm(list = ls(all = TRUE))  
 set.seed(123)
@@ -60,7 +50,4 @@ BUSfits <- BUSgibbs(example_Data, n.subtypes = 3, n.iterations = 100, showIterat
 est_baseline_expression_values <- baseline_expression_values(BUSfits)
 
 }
-% Add one or more standard keywords, see file 'KEYWORDS' in the
-% R documentation directory.
-%\keyword{ ~kwd1 }% use one of  RShowDoc("KEYWORDS")
-%\keyword{ ~kwd2 }% __ONLY ONE__ keyword per line
+

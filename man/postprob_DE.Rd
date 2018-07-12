@@ -1,6 +1,6 @@
 \name{postprob_DE}
 \alias{postprob_DE}
-%- Also NEED an '\alias' for EACH other topic documented here.
+
 \title{
 Calculate the posterior probability of being differentially expressed
 }
@@ -8,15 +8,13 @@ Calculate the posterior probability of being differentially expressed
 \usage{
 postprob_DE(BUSfits)
 }
-%- maybe also 'usage' for other objects documented here.
+
 \arguments{
   \item{BUSfits}{
 	The BUSfits object output by the function BUSgibbs.
 }
 }
-%\details{
-%%  ~~ If necessary, more details than the description above ~~
-%}
+
 \value{
 \item{postprob_DE_matr}{the matrix of posterior probabilities of being differentially expressed }
 }
@@ -26,15 +24,8 @@ Xiangyu Luo, Yingying Wei. Batch Effects Correction with Unknown Subtypes. Journ
 \author{
   Xiangyu Luo
 }
-%\note{
-%%  ~~further notes~~
-%}
 
-%% ~Make other sections like Warning with \section{Warning }{....} ~
 
-%\seealso{
-%% ~~objects to See Also as \code{\link{help}}, ~~~
-%}
 \examples{
 rm(list = ls(all = TRUE))  
 set.seed(123)
@@ -60,6 +51,5 @@ BUSfits <- BUSgibbs(example_Data, n.subtypes = 3, n.iterations = 100, showIterat
 postprob_DE(BUSfits)
 
 }
-% Add one or more standard keywords, see file 'KEYWORDS' in the
-% R documentation directory.
+
 

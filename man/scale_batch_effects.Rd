@@ -1,6 +1,6 @@
 \name{scale_batch_effects}
 \alias{scale_batch_effects}
-%- Also NEED an '\alias' for EACH other topic documented here.
+
 \title{
 Obtain the scale batch effects from the output by \code{BUSgibbs}
 }
@@ -8,15 +8,13 @@ Obtain the scale batch effects from the output by \code{BUSgibbs}
 \usage{
 scale_batch_effects(BUSfits)
 }
-%- maybe also 'usage' for other objects documented here.
+
 \arguments{
   \item{BUSfits}{
 The BUSfits object output by the function \code{BUSgibbs}.
 }
 }
-%\details{
-%%  ~~ If necessary, more details than the description above ~~
-%}
+
 \value{
 \item{est_scale_batch_effects}{The estimated scale batch effects, a matrix where rows are genes and columns are batches. }
 }
@@ -26,15 +24,8 @@ Xiangyu Luo, Yingying Wei. Batch Effects Correction with Unknown Subtypes. Journ
 \author{
   Xiangyu Luo
 }
-%\note{
-%%  ~~further notes~~
-%}
 
-%% ~Make other sections like Warning with \section{Warning }{....} ~
 
-%\seealso{
-%% ~~objects to See Also as \code{\link{help}}, ~~~
-%}
 \examples{
 rm(list = ls(all = TRUE))  
 set.seed(123)
@@ -58,6 +49,5 @@ set.seed(123)
 BUSfits <- BUSgibbs(example_Data, n.subtypes = 3, n.iterations = 100, showIteration = FALSE)
 est_scale_batch_effects <- scale_batch_effects(BUSfits)
 }
-% Add one or more standard keywords, see file 'KEYWORDS' in the
-% R documentation directory.
+
 

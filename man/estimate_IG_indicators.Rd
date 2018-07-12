@@ -1,6 +1,6 @@
 \name{estimate_IG_indicators}
 \alias{estimate_IG_indicators}
-%- Also NEED an '\alias' for EACH other topic documented here.
+
 \title{
 Estimate the intrinsic gene indicators
 }
@@ -8,7 +8,7 @@ Estimate the intrinsic gene indicators
 \usage{
 estimate_IG_indicators(BUSfits, postprob_DE_threshold = 0.5)
 }
-%- maybe also 'usage' for other objects documented here.
+
 \arguments{
   \item{BUSfits}{
 The BUSfits object output by the function \code{BUSgibbs}.
@@ -17,9 +17,7 @@ The BUSfits object output by the function \code{BUSgibbs}.
 the threshold to call an intrinsic gene indicator to be one or not according to whether its posterior probability is higher than postprob_DE_threshold or not. The default is 0.5.
 }
 }
-%\details{
-%%  ~~ If necessary, more details than the description above ~~
-%}
+
 \value{
 \item{est_L}{the estimated intrinsic gene indicators, a matrix where the rows represent genes and the columns correspond to subtypes k=2,...,K}
 }
@@ -29,15 +27,8 @@ Xiangyu Luo, Yingying Wei. Batch Effects Correction with Unknown Subtypes. Journ
 \author{
   Xiangyu Luo
 }
-%\note{
-%%  ~~further notes~~
-%}
 
-%% ~Make other sections like Warning with \section{Warning }{....} ~
 
-%\seealso{
-%% ~~objects to See Also as \code{\link{help}}, ~~~
-%}
 \examples{
 rm(list = ls(all = TRUE))  
 set.seed(123)
@@ -67,6 +58,5 @@ est_L <- estimate_IG_indicators(BUSfits, postprob_DE_threshold=thr0)
 #obtain the intrinsic gene indicators
 intrinsic_gene_indices <- IG_index(est_L)
 }
-% Add one or more standard keywords, see file 'KEYWORDS' in the
-% R documentation directory.
+
 

@@ -1,6 +1,6 @@
 \name{IG_index}
 \alias{IG_index}
-%- Also NEED an '\alias' for EACH other topic documented here.
+
 \title{
 Obtain the intrinsic gene indices
 }
@@ -8,15 +8,13 @@ Obtain the intrinsic gene indices
 \usage{
 IG_index(EstIGindicators)
 }
-%- maybe also 'usage' for other objects documented here.
+
 \arguments{
   \item{EstIGindicators}{
 The estimated intrinsic gene indicators.
 }
 }
-%\details{
-%%  ~~ If necessary, more details than the description above ~~
-%}
+
 \value{
 \item{intrinsic_gene_indices}{The intrinsic gene indices }
 }
@@ -26,15 +24,7 @@ Xiangyu Luo, Yingying Wei. Batch Effects Correction with Unknown Subtypes. Journ
 \author{
   Xiangyu Luo
 }
-%\note{
-%%  ~~further notes~~
-%}
 
-%% ~Make other sections like Warning with \section{Warning }{....} ~
-
-%\seealso{
-%% ~~objects to See Also as \code{\link{help}}, ~~~
-%}
 \examples{
 rm(list = ls(all = TRUE))  
 set.seed(123)
@@ -64,6 +54,5 @@ est_L <- estimate_IG_indicators(BUSfits, postprob_DE_threshold=thr0)
 #obtain the intrinsic gene indicators
 intrinsic_gene_indices <- IG_index(est_L)
 }
-% Add one or more standard keywords, see file 'KEYWORDS' in the
-% R documentation directory.
+
 

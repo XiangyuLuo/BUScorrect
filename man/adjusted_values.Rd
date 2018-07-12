@@ -1,6 +1,6 @@
 \name{adjusted_values}
 \alias{adjusted_values}
-%- Also NEED an '\alias' for EACH other topic documented here.
+
 \title{
 Obtain adjusted expression values from the output by BUSgibbs
 }
@@ -8,7 +8,7 @@ Obtain adjusted expression values from the output by BUSgibbs
 \usage{
 adjusted_values(BUSfits, original_data)
 }
-%- maybe also 'usage' for other objects documented here.
+
 \arguments{
   \item{BUSfits}{
 The BUSfits object output by the function \code{BUSgibbs}.
@@ -17,9 +17,7 @@ The BUSfits object output by the function \code{BUSgibbs}.
 The original gene expression data list with length equal to the batch number. Each of its element is a gene expression matrix for a specific batch, in which each row corresponds to a gene and each column corresponds to a sample.
 }
 }
-%\details{
-%%  ~~ If necessary, more details than the description above ~~
-%}
+
 \value{
 \item{adjusted_data}{An R list with length equal to the batch number. Each of its element is a corrected gene expression matrix for a specific batch, in which each row corresponds to a gene and each column corresponds to a sample.}
 }
@@ -29,15 +27,8 @@ Xiangyu Luo, Yingying Wei. Batch Effects Correction with Unknown Subtypes. Journ
 \author{
   Xiangyu Luo
 }
-%\note{
-%%  ~~further notes~~
-%}
 
-%% ~Make other sections like Warning with \section{Warning }{....} ~
 
-%\seealso{
-%% ~~objects to See Also as \code{\link{help}}, ~~~
-%}
 \examples{
 rm(list = ls(all = TRUE))  
 set.seed(123)
@@ -63,7 +54,3 @@ BUSfits <- BUSgibbs(example_Data, n.subtypes = 3, n.iterations = 100, showIterat
 adjusted_data <- adjusted_values(BUSfits, example_Data)
 
 }
-% Add one or more standard keywords, see file 'KEYWORDS' in the
-% R documentation directory.
-%\keyword{ ~kwd1 }% use one of  RShowDoc("KEYWORDS")
-%\keyword{ ~kwd2 }% __ONLY ONE__ keyword per line

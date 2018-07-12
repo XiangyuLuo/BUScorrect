@@ -1,6 +1,6 @@
 \name{print.BUSfits}
 \alias{print.BUSfits}
-%- Also NEED an '\alias' for EACH other topic documented here.
+
 \title{
 Print the output by BUSgibbs
 }
@@ -8,34 +8,22 @@ Print the output by BUSgibbs
 \usage{
 \method{print}{BUSfits}(x, ...)
 }
-%- maybe also 'usage' for other objects documented here.
+
 \arguments{
   \item{x}{
 The BUSfits object output by the function \code{BUSgibbs}.
 }
   \item{\dots}{not used.}
 }
-%\details{
-%%  ~~ If necessary, more details than the description above ~~
-%}
+
 \value{
 	print the results from the output by BUSgibbs.
 }
-%\references{
-%% ~put references to the literature/web site here ~
-%}
+
 \author{
   Xiangyu Luo
 }
-%\note{
-%%  ~~further notes~~
-%}
 
-%% ~Make other sections like Warning with \section{Warning }{....} ~
-
-%\seealso{
-%% ~~objects to See Also as \code{\link{help}}, ~~~
-%}
 \examples{
 rm(list = ls(all = TRUE))  
 set.seed(123)
@@ -60,7 +48,4 @@ BUSfits <- BUSgibbs(example_Data, n.subtypes = 3, n.iterations = 100, showIterat
 print(BUSfits)
 
 }
-% Add one or more standard keywords, see file 'KEYWORDS' in the
-% R documentation directory.
-%\keyword{ ~kwd1 }% use one of  RShowDoc("KEYWORDS")
-%\keyword{ ~kwd2 }% __ONLY ONE__ keyword per line
+

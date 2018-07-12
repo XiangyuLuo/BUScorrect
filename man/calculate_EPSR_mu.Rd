@@ -1,6 +1,5 @@
 \name{calculate_EPSR_mu}
 \alias{calculate_EPSR_mu}
-%- Also NEED an '\alias' for EACH other topic documented here.
 \title{
 Calculate the estimated potential scale reduction factors (EPSR factors) for subtype effects
 }
@@ -10,7 +9,7 @@ When Gibbs sampler attains stationary, the distances between multiple chains (wi
 \usage{
 calculate_EPSR_mu(mu_PosterSamp_chain1, mu_PosterSamp_chain2)
 }
-%- maybe also 'usage' for other objects documented here.
+
 \arguments{
   \item{mu_PosterSamp_chain1}{
 	posterior samples of subtype effects from chain 1. 
@@ -19,30 +18,21 @@ calculate_EPSR_mu(mu_PosterSamp_chain1, mu_PosterSamp_chain2)
 	posterior samples of subtype effects from chain 1. 
 }
 }
-%\details{
-%%  ~~ If necessary, more details than the description above ~~
-%}
+
 \value{
 \item{EPSR_gamma}{The EPSR factors for mu, a G by K matrix. Note that EPSR_mu[,1] is a NA vector. mu[,1] are fixed at zero, so their EPSR factors are not taken into account. }
 
 }
-%\references{
-%% ~put references to the literature/web site here ~
-%}
+
 \author{
   Xiangyu Luo
 }
-%\note{
-%%  ~~further notes~~
-%}
 
-%% ~Make other sections like Warning with \section{Warning }{....} ~
+\examples{
+#10 genes, 2 subtypes, 100 posterior samples per parameter
+chain1 <- 1+array(rnorm(10*2*100,sd=0.05), dim=c(10,2,100))
+chain2 <- 1+array(rnorm(10*2*100,sd=0.05), dim=c(10,2,100))
+calculate_EPSR_mu(chain1,chain2)
+}
 
-%\seealso{
-%% ~~objects to See Also as \code{\link{help}}, ~~~
-%}
-%\examples{
-%}
-% Add one or more standard keywords, see file 'KEYWORDS' in the
-% R documentation directory.
 \keyword{ EPSR factors }
