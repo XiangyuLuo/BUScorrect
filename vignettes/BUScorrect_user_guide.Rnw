@@ -49,7 +49,7 @@ BUS can integrate batches measured from different platforms and allow subtypes t
 
 
 \section{Data Preparation}
-\noindent To fit the BUS model, we first look at the data format. Two types of data format are allowed, the R list and the SummarizedExperiment object.\\ 
+\noindent To fit the BUS model, we first look at the input data format. Two types of data formats are allowed, the R list and the \Rpackage{SummarizedExperiment} object \cite{sum_exp}. Specifically, assuming there are 3 batches, the R list consists of 3 gene expression matrices with genes in rows and samples in columns. Alternatively, the user may have a \Rpackage{SummarizedExperiment} object at hand. The \Rpackage{SummarizedExperiment} object is a matrix, where rows represent genes, columns are samples, and the column data record the batch information for each sample. In the following, we provide concrete examples for the two allowable input formats.  \\ 
 
 <<data_preparation1>>=
 library(BUScorrect)
@@ -74,10 +74,10 @@ head(BUSexample_data[[1]][ ,1:4])
 @
 
 \noindent The example data \Robject{BUSexample\_data} consist of 3 batches. In total, 2000 genes are measured. 
-The sample sizes of each batch are 70, 80, and 70, respectively. Because it is a simulation data set, we know that all of the samples come from 3 subtypes. 
-We can also prepare a SummarizedExperiment object named \Robject{BUSdata\_SumExp}.
+The sample sizes of each batch are 70, 80, and 70, respectively. Because it is a simulation data set, we actually know that all of the samples come from 3 subtypes. In addition, we can prepare a \Rpackage{SummarizedExperiment} object named \Robject{BUSdata\_SumExp} using the \Robject{BUSexample\_data} as follows.\\
 
 <<data_preparation2>>=
+#require the SummarizedExperiment from Bioconductor
 require(SummarizedExperiment)
 
 #batch number
@@ -112,7 +112,7 @@ head(assays(BUSdata_SumExp)$GE_matr[ ,1:4])
 head(colData(BUSdata_SumExp)$Batch)
 @
 
-
+\noindent In a nutshell, the user can use either the R list or the \Rpackage{SummarizedExperiment} object as input. Regarding the R list, the list length is equal to the batch number, and each list component is a gene expression matrix from a batch. With respect to the \Rpackage{SummarizedExperiment} object, it is a matrix where rows are genes and columns represent samples, and the user has to specify the sample-specific batch indicators through the \Robject{Batch} vector in the \Robject{colData} column data frame.\\ 
 
 
 \section{Model Fitting}

@@ -1,190 +1,257 @@
+################################################################
+# Internal functions to be used in the BUSgibbs function
+################################################################
+
+# A function for sampling from the Dirichlet distribution
+.Dirichlet <- function(alpha_vec){
+    #input is a parameter vector
+    #output is one sample from Dirichlet distribution
+    
+    n <- length(alpha_vec)
+    gamma_rvs <- vapply(seq_len(n), function(i){
+        rgamma(1, shape = alpha_vec[i], rate = 1) }, FUN.VALUE=1)
+    return(gamma_rvs/sum(gamma_rvs))
+}
+
+
+# A function for sampling from the Inverse Gamma distribution
+.Inv_Gamma <- function(a,b){
+    #input is shape a and scale b of Inv-Gamma distribution
+    #output is one sample from the inverse gamma distribution
+    tmp <- rgamma(1,shape = a, rate = b)
+    return(1/tmp)
+}
+
+
+
+
+################################################################
+# Internal functions to be used in the BUSgibbs function
+# for Gibbs sampler
+################################################################
+
+
+#Throughout the code, G is the gene number, K is the subtype
+# number, B is the batch number, and n_vec is the sample size
+# vector
+
+
+# Full Conditional Functions
+
+#Update the differentially expressed (DE) indicator proportion
+.update_DE_prop <- function(L_t, a_p, b_p, G, K){
+    #a_p and b_p are the hyperparameters for the DE proportion parameter
+    s <- sum(L_t)
+    tmp <- rbeta(1, shape1 = s + a_p, shape2 = G*(K-1) - s + b_p)
+    return(tmp)
+}
+
+#Update the subtype proportions
+.update_pi <- function(Z_t, alpha_par, B, K){
+    #update the subtype proportion
+    #Z_t is a list containing B n_vec[b]-component vector where the entry
+    #Z_t[[b]][j] stands for the subtype indicator of jth subject in bth batch
+    #alpha_par is the hyperparameter vector in the Dirichlet prior
+    #output is a B by K matrix
+    tmp <- matrix(NA, B, K)
+    for(b in seq_len(B)){
+        prob <- vapply(seq_len(K), function(k) sum(Z_t[[b]]==k), FUN.VALUE=1 )
+        tmp[b, ] <- .Dirichlet(prob + alpha_par)
+    }
+    return(tmp)
+}
+
+
+#Update the DE indicators
+.update_L <- function(mu_t, DE_prop_t, tau_mu_zero_t, tau_mu_one_t){
+    #update L_{gk} for k >= 2, L_{gk} = 1 if the expression level of
+    #subtype k's gene g is differentially expressed compared to that
+    #of subtype 1's gene g.
+    #output is a G by K-1 matrix
+    args <- list("mu_t" = as.numeric(mu_t), "mu_t_dim" = as.integer(dim(mu_t)),
+                 "DE_prop_t" = as.numeric(DE_prop_t),
+                 "tau_mu_zero_t" = as.numeric(tau_mu_zero_t),
+                 "tau_mu_one_t"=as.numeric(tau_mu_one_t))
+    L <- .Call("update_L_c", args)
+    return(L)
+}
+
+#Update the standard deviation for the spike part
+.tau_mu_zero_update <- function(L_t, mu_t, a_tau0, b_tau0){
+    ind <- (L_t == 0)
+    s1 <- sum(ind)
+    mu_t_tmp <- mu_t[ ,-1]
+    s2 <- sum(mu_t_tmp[ind]^2)
+    return(sqrt(.Inv_Gamma(a_tau0 + 1/2*s1, b_tau0 + 1/2*s2)))
+}
+
+#Update the subtypes for samples
+.update_Z_v2 <- function( Z_t, alpha_t, mu_t,gamma_t,sigma_sq_t, pi_t,
+                          Y, B, n_vec, K){
+    #update Z by Metropolis-Hasting step
+    #Z_t is a list containing B n_vec[b]-component vector where the entry
+    #Z_t[[b]][j] stands for the subtype indicator of jth subject in bth batch
+    #mu_t is the G by K subtype effect matrix
+    #gamma_t is the B by G batch effect matrix
+    #sigma_sq_t is the B by G batch effect (variance) matrix
+    #pi_t is a B by K matrix
+    #Y is the gene expression data list
+    #output is a list containing B n_vec[b]-component vector
+    
+    Z_tmp <- Z_t
+    for(b in seq_len(B)){
+        for(j in seq_len(n_vec[b])){
+            #get a proposal
+            proposal <- sample(seq_len(K),1)
+            
+            #calculate posterior ratio in log scale
+            aa <- sum( -(Y[[b]][j,] - alpha_t - mu_t[,proposal] -
+                       gamma_t[b,])^2/(2*sigma_sq_t[b,]) )
+                       
+            bb <- sum( -(Y[[b]][j,] - alpha_t - mu_t[,Z_tmp[[b]][j]] -
+                       gamma_t[b,])^2/(2*sigma_sq_t[b,]) )
+            
+            #calculate the acceptance prob
+            prob <- min(exp(aa - bb)*pi_t[b, proposal]/pi_t[b, Z_tmp[[b]][j]] ,
+                        1)
+                        
+            tmp <- runif(1)
+            
+            #accept or reject the proposal
+            if(tmp <= prob){
+                Z_tmp[[b]][j] <- proposal
+            }
+        }
+    }
+    return(Z_tmp)
+}
+
+#Update the baseline expression level
+.update_alpha <- function(mu_t, gamma_t, Z_t, sigma_sq_t, tau_alpha,
+                          eta_alpha, Y, n_vec){
+    #update baseline expression level
+    #mu_t is the G by K subtype effect matrix
+    #gamma_t is the B by G batch effect matrix
+    #Z_t is a list containing B n_vec[b]-component vector where the entry
+    #Z_t[[b]][j] stands for the subtype indicator of jth subject in bth batch
+    #sigma_sq_t is the B by G batch effect (variance) matrix
+    #output is a G dimensional vector
+    args <- list("Y" = Y, "n_vec" = as.integer(n_vec),
+                 "mu_t" = as.numeric(mu_t),
+                 "mu_t_dim" = as.integer(dim(mu_t)),
+                 "gamma_t" = as.numeric(gamma_t),
+                 "gamma_t_dim" = as.integer(dim(gamma_t)),
+                 "Z_t" = Z_t, "sigma_sq_t" =  as.numeric(sigma_sq_t),
+                 "tau_alpha" = as.numeric(tau_alpha),
+                 "eta_alpha" = as.numeric(eta_alpha))
+    
+    alpha <- .Call("update_alpha_c", args)
+    return(alpha)
+}
+
+
+#Update the subtype effects
+.update_mu <- function(L_t, alpha_t, gamma_t, Z_t, sigma_sq_t, tau_mu_zero_t,
+                       tau_mu_one_t, Y, B, n_vec, G, K){
+    #update subtype effect
+    #L_t is the G by K-1 matrix
+    #alpha_t is the G dimensional vector
+    #gamma_t is the B by G batch effect matrix
+    #Z_t is a list containing B n_vec[b]-component vector where the entry
+    #Z_t[[b]][j] stands for the subtype indicator of jth subject in bth batch
+    #sigma_sq_t is the B by G batch effect (variance) matrix
+    #output is a G by K matrix
+    args <- list("Y" = Y, "L_t" = as.integer(L_t),
+                 "alpha_t" = as.numeric(alpha_t),
+                 "gamma_t" = as.numeric(gamma_t),
+                 "Z_t" = Z_t, "sigma_sq_t" = as.numeric(sigma_sq_t),
+                 "tau_mu_zero_t" = as.numeric(tau_mu_zero_t),
+                 "tau_mu_one_t" = as.numeric(tau_mu_one_t),
+                 "B" = as.integer(B), "n_vec" = as.integer(n_vec),
+                 "G" = as.integer(G), "K" = as.integer(K))
+    mu <- .Call("update_mu_c", args)
+    return(mu)
+}
+
+#Update the location batch effects
+.update_gamma <- function( alpha_t, mu_t, sigma_sq_t, Z_t, tau_gamma,
+                           Y, B, n_vec, G){
+    #update batch effect
+    #alpha_t is the G dimensional vector
+    #mu_t is a G by K matrix
+    #sigma_sq_t is the B by G batch effect (variance) matrix
+    #Z_t is a list containing B n_vec[b]-component vector where the entry
+    #Z_t[[b]][j] stands for the subtype indicator of jth subject in bth batch
+    #output is a B by G matrix
+    
+    args <- list("Y" = Y, "alpha_t" = as.numeric(alpha_t),
+                 "mu_t" = as.numeric(mu_t),
+                 "Z_t" = Z_t, "sigma_sq_t" = as.numeric(sigma_sq_t),
+                 "B" = as.integer(B), "n_vec" = as.integer(n_vec),
+                 "G" = as.integer(G),
+                 "tau_gamma" = as.numeric(tau_gamma))
+    
+    gamma <- .Call("update_gamma_c", args)
+    return(gamma)
+}
+
+#Update the variances within each batch
+.update_sigma_sq <- function(alpha_t, mu_t, Z_t, gamma_t, a_inv_gamma,
+                             b_inv_gamma, Y, B, n_vec, G){
+    #update variance
+    #alpha_t is the G dimensional vector
+    #mu_t is the G by K subtype effect matrix
+    #Z_t is a list containing B n_vec[b]-component vector where the entry
+    #Z_t[[b]][j] stands for the subtype indicator of jth subject in bth batch
+    #gamma_t is the B by G batch effect matrix
+    #output is a B by G matrix
+    
+    args <- list("Y" = Y, "alpha_t" = as.numeric(alpha_t),
+                 "mu_t" = as.numeric(mu_t),
+                 "Z_t" = Z_t, "gamma_t" = as.numeric(gamma_t),
+                 "B" = as.integer(B), "n_vec" = as.integer(n_vec),
+                 "G" = as.integer(G), "a_inv_gamma" = as.numeric(a_inv_gamma),
+                 "b_inv_gamma" = as.numeric(b_inv_gamma))
+    
+    sigma_sq <- .Call("update_sigma_sq_c", args)
+    return(sigma_sq)
+}
+
+
+#Function for calculating estimated Observed Log Likelihood
+.observed_log_likelihood <- function(pi_t_post, alpha_t_post, mu_t_post,
+                                     gamma_t_post, sigma_sq_t_post, Y, n_vec){
+    args <- list("Y" = Y, "n_vec" = as.integer(n_vec),
+                  "pi_t_post"=as.numeric(pi_t_post),
+                  "alpha_t_post" = as.numeric(alpha_t_post),
+                  "mu_t_post" = as.numeric(mu_t_post),
+                  "mu_t_dim" = as.integer(dim(mu_t_post)),
+                  "gamma_t_post" = as.numeric(gamma_t_post),
+                  "gamma_t_dim" = as.integer(dim(gamma_t_post)),
+                  "sigma_sq_t_post" = as.numeric(sigma_sq_t_post))
+    
+    ret_value <- .Call("observed_log_likelihood_c", args)
+    return(ret_value)
+}
 
 
 ################################################################
 # The Main Function
 ################################################################
+
 BUSgibbs <- function(Data, n.subtypes, n.iterations = 500, 
 				     n.records = floor(n.iterations / 2),  hyperparameters = 
-	                 c(1, sqrt(5), sqrt(5), 2, 2, 1, 2, 0.005, 1, 3, 10), showIteration = TRUE ){
-
-
-
-	# Functions for sampling Dirichlet distribution 
-	# and Inverse Gamma distribution
-
-	Dirichlet <- function(alpha_vec){
-		#input is a parameter vector
-		#output is one sample from Dirichlet distribution
-
-		n <- length(alpha_vec)
-		gamma_rvs <- vapply(seq_len(n), function(i){ 
-						rgamma(1, shape = alpha_vec[i], rate = 1) }, FUN.VALUE=1)
-		return(gamma_rvs/sum(gamma_rvs))
-	}
-
-	Inv_Gamma <- function(a,b){
-		#input is shape a and scale b of Inv-Gamma distribution
-		#output is one sample from the inverse gamma distribution
-		tmp <- rgamma(1,shape = a, rate = b)
-		return(1/tmp)
-	}
-
-
-	# Full Conditional Functions
-
-	update_DE_prop <- function(L_t){
-		s <- sum(L_t)
-		tmp <- rbeta(1, shape1 = s + a_p, shape2 = G*(K-1) - s + b_p)
-		return(tmp)
-	}
-
-	update_pi <- function(Z_t){
-		#update the subtype proportion
-		#Z_t is a list containing B n_vec[b]-component vector where the entry Z_t[[b]][j] stands for the subtype indicator of jth subject in bth batch
-		#output is a B by K matrix	
-		tmp <- matrix(NA, B, K)
-		for(b in seq_len(B)){
-			prob <- vapply(seq_len(K), function(k) sum(Z_t[[b]]==k), FUN.VALUE=1 )
-			tmp[b, ] <- Dirichlet(prob + alpha_par)	#alpha_par is a global variable defined latter
-		}
-		return(tmp)
-	}
-
-
-	
-
-	update_L <- function(mu_t, DE_prop_t, tau_mu_zero_t, tau_mu_one_t){
-		#update L_{gk} for k >= 2, L_{gk} = 1 if the expression level of subtype k's gene g is differentially expressed compared to that 
-		#of subtype 1's gene g.
-		#output is a G by K-1 matrix
-		args <- list("mu_t" = as.numeric(mu_t), "mu_t_dim" = as.integer(dim(mu_t)), "DE_prop_t" = as.numeric(DE_prop_t), 
-			"tau_mu_zero_t" =  as.numeric(tau_mu_zero_t),"tau_mu_one_t"=as.numeric(tau_mu_one_t))
-		L <- .Call("update_L_c", args)
-		return(L)
-	}
-
-
-	tau_mu_zero_update <- function(L_t, mu_t){
-		ind <- (L_t == 0)
-		s1 <- sum(ind)
-		mu_t_tmp <- mu_t[ ,-1]
-		s2 <- sum(mu_t_tmp[ind]^2)
-		return(sqrt(Inv_Gamma(a_tau0 + 1/2*s1, b_tau0 + 1/2*s2)))
-	}
-
-	update_Z_v2 <- function( Z_t, alpha_t, mu_t,gamma_t,sigma_sq_t,pi_t ){ 	
-		#update Z by Metropolis-Hasting step
-		#Z_t is a list containing B n_vec[b]-component vector where the entry Z_t[[b]][j] stands for the subtype indicator of jth subject in bth batch
-		#mu_t is the G by K subtype effect matrix
-		#gamma_t is the B by G batch effect matrix
-		#sigma_sq_t is the B by G batch effect (variance) matrix
-		#pi_t is a B by K matrix 
-		#output is a list containing B n_vec[b]-component vector
-
-		Z_tmp <- Z_t
-		for(b in seq_len(B)){
-			for(j in seq_len(n_vec[b])){
-
-				proposal <- sample(seq_len(K),1)
-				aa <- sum( -(Y[[b]][j, ] - alpha_t - mu_t[ ,proposal] - gamma_t[b, ])^2/(2*sigma_sq_t[b,]) ) 
-				bb <- sum( -(Y[[b]][j, ] - alpha_t - mu_t[ ,Z_tmp[[b]][j]] - gamma_t[b, ])^2/(2*sigma_sq_t[b,]) ) 
-				prob <- min(exp(aa - bb)*pi_t[b, proposal]/pi_t[b, Z_tmp[[b]][j]] , 1)		
-				tmp <- runif(1)
-				if(tmp <= prob){
-					Z_tmp[[b]][j] <- proposal
-				}
-			}
-		}
-		return(Z_tmp)
-	} 
-
-	update_alpha <- function(mu_t, gamma_t, Z_t, sigma_sq_t, tau_alpha, eta_alpha){
-		#update baseline expression level
-		#mu_t is the G by K subtype effect matrix
-		#gamma_t is the B by G batch effect matrix
-		#Z_t is a list containing B n_vec[b]-component vector where the entry Z_t[[b]][j] stands for the subtype indicator of jth subject in bth batch
-		#sigma_sq_t is the B by G batch effect (variance) matrix
-		#output is a G dimensional vector
-		args <- list("Y" = Y, "n_vec" = as.integer(n_vec), "mu_t" = as.numeric(mu_t), "mu_t_dim" = as.integer(dim(mu_t)), "gamma_t" = as.numeric(gamma_t), 
-			"gamma_t_dim" = as.integer(dim(gamma_t)), "Z_t" = Z_t, 
-			"sigma_sq_t" =  as.numeric(sigma_sq_t), 
-			"tau_alpha" = as.numeric(tau_alpha), "eta_alpha" = as.numeric(eta_alpha))
-		alpha <- .Call("update_alpha_c", args)		
-		return(alpha)
-	}
-	
-	
-
-	update_mu <- function(L_t, alpha_t, gamma_t, Z_t, sigma_sq_t, tau_mu_zero_t, tau_mu_one_t){
-		#update subtype effect
-		#L_t is the G by K-1 matrix
-		#alpha_t is the G dimensional vector
-		#gamma_t is the B by G batch effect matrix
-		#Z_t is a list containing B n_vec[b]-component vector where the entry Z_t[[b]][j] stands for the subtype indicator of jth subject in bth batch
-		#sigma_sq_t is the B by G batch effect (variance) matrix
-		#output is a G by K matrix
-		args <- list("Y" = Y, "L_t" = as.integer(L_t), "alpha_t" = as.numeric(alpha_t), "gamma_t" = as.numeric(gamma_t), 
-			"Z_t" = Z_t, "sigma_sq_t" = as.numeric(sigma_sq_t), "tau_mu_zero_t" = as.numeric(tau_mu_zero_t),
-			"tau_mu_one_t" = as.numeric(tau_mu_one_t),
-			"B" = as.integer(B), "n_vec" = as.integer(n_vec), "G" = as.integer(G), "K" = as.integer(K))
-		mu <- .Call("update_mu_c", args)
-		return(mu)
-	}
-
-	update_gamma <- function( alpha_t, mu_t, sigma_sq_t, Z_t, tau_gamma ){
-		#update batch effect
-		#alpha_t is the G dimensional vector
-		#mu_t is a G by K matrix
-		#sigma_sq_t is the B by G batch effect (variance) matrix
-		#Z_t is a list containing B n_vec[b]-component vector where the entry Z_t[[b]][j] stands for the subtype indicator of jth subject in bth batch
-		#output is a B by G matrix
-
-		args <- list("Y" = Y, "alpha_t" = as.numeric(alpha_t), "mu_t" = as.numeric(mu_t), 
-			"Z_t" = Z_t, "sigma_sq_t" = as.numeric(sigma_sq_t), 
-			"B" = as.integer(B), "n_vec" = as.integer(n_vec), "G" = as.integer(G), 
-			"tau_gamma" = as.numeric(tau_gamma))
-
-		gamma <- .Call("update_gamma_c", args)
-		return(gamma)
-	}
-
-	update_sigma_sq <- function(alpha_t, mu_t, Z_t, gamma_t, a_inv_gamma, b_inv_gamma){
-		#update variance
-		#alpha_t is the G dimensional vector
-		#mu_t is the G by K subtype effect matrix	
-		#Z_t is a list containing B n_vec[b]-component vector where the entry Z_t[[b]][j] stands for the subtype indicator of jth subject in bth batch
-		#gamma_t is the B by G batch effect matrix
-		#output is a B by G matrix 
-
-		args <- list("Y" = Y, "alpha_t" = as.numeric(alpha_t), "mu_t" = as.numeric(mu_t), 
-			"Z_t" = Z_t, "gamma_t" = as.numeric(gamma_t), 
-			"B" = as.integer(B), "n_vec" = as.integer(n_vec), "G" = as.integer(G),
-			"a_inv_gamma" = as.numeric(a_inv_gamma), "b_inv_gamma" = as.numeric(b_inv_gamma))
-
-		sigma_sq <- .Call("update_sigma_sq_c", args)
-		return(sigma_sq)
-	}
-
-
-	#Function for calculating estimated Observed Log Likelihood 
-	observed_log_likelihood <- function(pi_t_post, alpha_t_post, mu_t_post, gamma_t_post, sigma_sq_t_post){
-		args <- list("Y" = Y, "n_vec" = as.integer(n_vec), "pi_t_post"=as.numeric(pi_t_post), "alpha_t_post" = as.numeric(alpha_t_post), 
-			"mu_t_post" = as.numeric(mu_t_post), "mu_t_dim" = as.integer(dim(mu_t_post)), 
-		        "gamma_t_post" = as.numeric(gamma_t_post), "gamma_t_dim" = as.integer(dim(gamma_t_post)),
-			"sigma_sq_t_post" = as.numeric(sigma_sq_t_post))
-
-		ret_value <- .Call("observed_log_likelihood_c", args)
-		return(ret_value)
-	}
-
+	                 c(1, sqrt(5), sqrt(5), 2, 2, 1, 2, 0.005, 1, 3, 10),
+                    showIteration = TRUE ){
 
 	# Gibbs sampler
 	Y <- list() #input data Y
 	
-	if(is(Data, "SummarizedExperiment")){ #The input data format is SummarizedExperiment
+	if(is(Data, "SummarizedExperiment")){
+        #The input data format is SummarizedExperiment
 		batch_info <- colData(Data)$Batch
 		B <- length(unique(batch_info)) #batch number
-		G <- nrow(assays(Data)$GE_matr)      #gene number 
+		G <- nrow(assays(Data)$GE_matr)      #gene number
 		n_vec <- NULL                   #sample size vector 
 		for(b in seq_len(B)){
 			n_vec <- c(n_vec, sum(batch_info == b))
@@ -210,11 +277,14 @@ BUSgibbs <- function(Data, n.subtypes, n.iterations = 500,
 			G <- G_vec[1]
 		}else stop("The gene numbers across batches must be the same.\n")
 
-		if(sum(G_vec <= n_vec) > 0){    #the gene number must be greater than the sample size in each batch
+		if(sum(G_vec <= n_vec) > 0){
+            #the gene number must be greater than
+            #the sample size in each batch
 			stop("The gene number must be great than the sample size.\n")
 		}
 	}else{
-		stop("Data must be either a \"SummarizedExperiment\" object or a \"list\" object!")
+		stop(paste0("Data must be either a \"SummarizedExperiment\" object",
+                    " or a \"list\" object!\n"))
 	}
 	
 	if(B < 2){
@@ -222,14 +292,11 @@ BUSgibbs <- function(Data, n.subtypes, n.iterations = 500,
 	}
 
 
-
-
-
-
 	K <- n.subtypes
 
 	if(sum(K > n_vec) > 0){
-		stop("The sample size in any batch must be greater than the assumed subtype number.\n")
+		stop(paste0("The sample size in any batch must be greater",
+                    " than the assumed subtype number.\n"))
 	}
 
 	###specify hyperparameters
@@ -271,15 +338,20 @@ BUSgibbs <- function(Data, n.subtypes, n.iterations = 500,
 
 	raw_Means<- array(NA, dim = c(B, K, G))
 
+    #Note: the product of the batch number B and the subtype number K
+    #is usually less than 100. The following nested for loop cost
+    #little time.
+    
 	for(b in seq_len(B)){
 		for(k in seq_len(K)){
-			if(sum(Z_t[[b]] == k) > 1){
+            sumzt_bk <- sum(Z_t[[b]] == k)
+			if(sumzt_bk > 1){
 				raw_Means[b,k,] <- colMeans(Y[[b]][Z_t[[b]]==k,])
-			}else   raw_Means[b,k,] <- Y[[b]][Z_t[[b]]==k,]
+            }else{
+                raw_Means[b,k,] <- Y[[b]][Z_t[[b]]==k,]
+            }
 		}
 	}
-
-
 
 	alpha_t <- raw_Means[1,1, ]
 
@@ -295,10 +367,10 @@ BUSgibbs <- function(Data, n.subtypes, n.iterations = 500,
 
 
 	###to L_t
-	L_t <- update_L(mu_t, DE_prop_t, tau_mu_zero_t, tau_mu_one_t)
+	L_t <- .update_L(mu_t, DE_prop_t, tau_mu_zero_t, tau_mu_one_t)
 
 	###to tau_mu_zero_t
-	tau_mu_zero_t <- tau_mu_zero_update(L_t, mu_t) 
+	tau_mu_zero_t <- .tau_mu_zero_update(L_t, mu_t, a_tau0, b_tau0)
 
 
 	###to gamma_t
@@ -312,14 +384,15 @@ BUSgibbs <- function(Data, n.subtypes, n.iterations = 500,
 
 	###to sigma_sq_t
 
-	sigma_sq_t <- update_sigma_sq(alpha_t, mu_t, Z_t, gamma_t, 
-				a_inv_gamma, b_inv_gamma)
+	sigma_sq_t <- .update_sigma_sq(alpha_t, mu_t, Z_t, gamma_t,
+				a_inv_gamma, b_inv_gamma, Y, B, n_vec, G)
 
 
 	# record samples after burn-in period
 
 	T_iter <- n.iterations #total number of iterations
-	num_rec <- n.records #how many last iterations to be used to infer parameters 
+	num_rec <- n.records   #how many last iterations to be used
+                           #to infer parameters
 
 
 	### variables used to record samples
@@ -339,23 +412,32 @@ BUSgibbs <- function(Data, n.subtypes, n.iterations = 500,
 	tau_mu_zero_t_record <- rep(NA, num_rec)
 
 	t1 <- Sys.time()
-	cat("  running the Gibbs sampler ...\n")
+    
+    #Gibbs sampler begins here
+	message("  running the Gibbs sampler ...\n")
 	for(t in seq_len(T_iter)){
-
-		pi_t <- update_pi(Z_t)
-		DE_prop_t <- update_DE_prop(L_t)
-		Z_t <- update_Z_v2(Z_t, alpha_t, mu_t, gamma_t,sigma_sq_t,pi_t)
-		L_t <- update_L(mu_t, DE_prop_t, tau_mu_zero_t, tau_mu_one_t)
-		tau_mu_zero_t <- tau_mu_zero_update(L_t, mu_t)
-		alpha_t <- update_alpha(mu_t, gamma_t, Z_t, sigma_sq_t, tau_alpha, eta_alpha)
-		mu_t <- update_mu(L_t, alpha_t, gamma_t, Z_t, sigma_sq_t, tau_mu_zero_t,  tau_mu_one_t)
-		gamma_t <- update_gamma(alpha_t, mu_t, sigma_sq_t, Z_t, tau_gamma)
-		sigma_sq_t <- update_sigma_sq(alpha_t, mu_t, Z_t, gamma_t, a_inv_gamma, b_inv_gamma)
+        #sequetially update each parameter
+		pi_t <- .update_pi(Z_t, alpha_par, B, K)
+		DE_prop_t <- .update_DE_prop(L_t, a_p, b_p, G, K)
+		Z_t <- .update_Z_v2(Z_t, alpha_t, mu_t, gamma_t,sigma_sq_t,pi_t,
+                            Y, B, n_vec, K)
+		L_t <- .update_L(mu_t, DE_prop_t, tau_mu_zero_t, tau_mu_one_t)
+		tau_mu_zero_t <- .tau_mu_zero_update(L_t, mu_t, a_tau0, b_tau0)
+		alpha_t <- .update_alpha(mu_t, gamma_t, Z_t, sigma_sq_t, tau_alpha,
+                                 eta_alpha, Y, n_vec)
+		mu_t <- .update_mu(L_t, alpha_t, gamma_t, Z_t, sigma_sq_t,
+                           tau_mu_zero_t,  tau_mu_one_t, Y, B, n_vec, G, K)
+		gamma_t <- .update_gamma(alpha_t, mu_t, sigma_sq_t, Z_t, tau_gamma,
+                                 Y, B, n_vec, G)
+		sigma_sq_t <- .update_sigma_sq(alpha_t, mu_t, Z_t, gamma_t,
+                                  a_inv_gamma, b_inv_gamma, Y, B, n_vec, G)
 	
 		if(showIteration == TRUE){
-			cat(c("  Iteration ", t, "\n") )
+			message(c("  Iteration ", t, "\n") )
 		}
 
+        #when the iteration number is large enough,
+        #the samples are stored
 		if(t > T_iter - num_rec ){
 			DE_prop_t_record[t - (T_iter - num_rec)] <- DE_prop_t
 			tau_mu_zero_t_record[t - (T_iter - num_rec)] <- tau_mu_zero_t
@@ -377,10 +459,11 @@ BUSgibbs <- function(Data, n.subtypes, n.iterations = 500,
 
 	output <- list()
 
-	cat(paste0("  The Gibbs sampler takes: ", round(difftime( t2, t1, units = "mins"), 3), " mins", "\n"))
+	message(paste0("  The Gibbs sampler takes: ", round(difftime( t2, t1,
+                units = "mins"), 3), " mins", "\n"))
 	###Posterior samples of DE indicators L
 
-	cat("  calculating posterior means and posterior modes...\n")
+	message("  calculating posterior means and posterior modes...\n")
 
 	output[[1]] <- L_t_record
 
@@ -413,15 +496,15 @@ BUSgibbs <- function(Data, n.subtypes, n.iterations = 500,
 
 
 	for(b in seq_len(B)){
-		pi_t_post[b, ] <- apply(pi_t_record[b,seq_len(K), ], 1, mean)
-		gamma_t_post[b, ] <- apply(gamma_t_record[b,seq_len(G), ], 1, mean)
-		sigma_sq_t_post[b, ] <- apply(sigma_sq_t_record[b,seq_len(G), ], 1, mean)
+		pi_t_post[b, ] <- rowMeans(pi_t_record[b,seq_len(K), ])
+		gamma_t_post[b, ] <- rowMeans(gamma_t_record[b,seq_len(G), ])
+		sigma_sq_t_post[b, ] <- rowMeans(sigma_sq_t_record[b,seq_len(G), ])
 	}
 
 
 	for(g in seq_len(G)){
 		alpha_t_post[g] <- mean(alpha_t_record[g, ])
-		mu_t_post[g, ] <- apply(mu_t_record[g,seq_len(K), ], 1, mean)
+		mu_t_post[g, ] <- rowMeans(mu_t_record[g,seq_len(K), ])
 	}
 
 
@@ -444,24 +527,27 @@ BUSgibbs <- function(Data, n.subtypes, n.iterations = 500,
 	output[[11]] <- mu_t_record
 	output[[12]] <- mu_t_post
 
-	cat("  calculating BIC...\n")
-	BIC <- (-2)*observed_log_likelihood(pi_t_post, alpha_t_post, mu_t_post, gamma_t_post, sigma_sq_t_post) + 
-		((2*B-1)*G + G*K)*log(sum(n_vec)*G)
+	message("  calculating BIC...\n")
+	BIC <- (-2)*.observed_log_likelihood(pi_t_post, alpha_t_post, mu_t_post,
+                                gamma_t_post, sigma_sq_t_post, Y, n_vec) +
+                 ((2*B-1)*G + G*K)*log(sum(n_vec)*G)
 
 	output[[13]] <- BIC
 
 
-	names(output) <- c("L_PosterSamp", "Subtypes", "tau_mu_zero", "p", "pi", "alpha", "gamma_PosterSamp", "gamma",
-			"sigma_sq_PosterSamp", "sigma_sq", "mu_PosterSamp", "mu", "BIC")
+	names(output) <- c("L_PosterSamp", "Subtypes", "tau_mu_zero", "p", "pi",
+                       "alpha", "gamma_PosterSamp", "gamma",
+			           "sigma_sq_PosterSamp", "sigma_sq", "mu_PosterSamp",
+                       "mu", "BIC")
 
 	class(output) <- "BUSfits"
 	return(output)
 
 }
 
-#######################################################################################
+############################################################################
 #Estimate intrinsic gene indicators
-#######################################################################################
+############################################################################
 	
 #calculate posterior probability of being differentially expressed 
 #for gene g in subtype k (k>=2) compared to subtype 1	
@@ -480,15 +566,53 @@ postprob_DE <- function(BUSfits){
 				}, FUN.VALUE=1)
 		PPI <- cbind(PPI, temp)
 	}
-	cat("Showing the posterior probability of being differentially expressed\n")
-	cat("               for gene g in subtype k (k>=2) compared to subtype 1.\n\n")
-	cat("The output format is a matrix.\n")
-	cat("Each row represents a gene, and each column corresponds to a subtype.\n")	
+	message("Showing the posterior probability of being differentially",
+            "expressed\n")
+	message(paste0("               for gene g in subtype k (k>=2) compared",
+               " to subtype 1.\n\n"))
+	message("The output format is a matrix.\n")
+	message(paste0("Each row represents a gene, and each column corresponds",
+               " to a subtype.\n"))
 	return(PPI)
 }
 
 
 
+#Internal functions used in the next function
+#"postprob_DE_thr_fun"
+.postprob_DE2 <- function(BUSfits){
+    if(!is(BUSfits, "BUSfits")){
+        stop("BUSfits should be in the \"BUSfits\" class.\n")
+    }
+    L_PosterSamp <- BUSfits$L_PosterSamp
+    G <- dim(L_PosterSamp)[1]
+    K <- dim(L_PosterSamp)[2] + 1
+    num_rec <- dim(L_PosterSamp)[3]
+    PPI <- NULL
+    for(k in seq_len(K-1)){
+        temp <- vapply(seq_len(G), function(j){
+            sum(L_PosterSamp[j,k, ] == 1) / num_rec
+        }, FUN.VALUE=1)
+        PPI <- cbind(PPI, temp)
+    }
+    
+    return(PPI)
+}
+
+.fdrDEindicator <- function(L_PosterSamp, kappa){
+    G <- dim(L_PosterSamp)[1]
+    K <- dim(L_PosterSamp)[2] + 1
+    num_rec <- dim(L_PosterSamp)[3]
+    
+    args <- list("G"=as.integer(G), "K"=as.integer(K),
+                 "num_rec"=as.integer(num_rec), "kappa"=as.numeric(kappa),
+                 "L_PosterSamp"=as.integer(L_PosterSamp))
+    fdr <- .Call("fdrDEindicator_c", args)
+    
+    return(fdr)
+}
+
+#calculate the DE posterior probability threshold
 postprob_DE_thr_fun <- function(BUSfits, fdr_threshold=0.1){
 	#find posterior probability threshold to control FDR
 	if(!is(BUSfits, "BUSfits")){
@@ -498,41 +622,10 @@ postprob_DE_thr_fun <- function(BUSfits, fdr_threshold=0.1){
 	#L_PosterSamp is the posterior samples of the intrinsic gene indicators
 	#alpha (default is 0.1) is the threshould of fdr we want to control	
 
-	fdrDEindicator <- function(L_PosterSamp, kappa){
-		G <- dim(L_PosterSamp)[1]
-		K <- dim(L_PosterSamp)[2] + 1
-		num_rec <- dim(L_PosterSamp)[3]
-
-		args <- list("G"=as.integer(G), "K"=as.integer(K), "num_rec"=as.integer(num_rec), "kappa"=as.numeric(kappa),
-			"L_PosterSamp"=as.integer(L_PosterSamp))
-		fdr <- .Call("fdrDEindicator_c", args)
-
-		return(fdr)
-	}
-
-	postprob_DE2 <- function(BUSfits){
-		if(!is(BUSfits, "BUSfits")){
-			stop("BUSfits should be in the \"BUSfits\" class.\n")
-		}
-		L_PosterSamp <- BUSfits$L_PosterSamp
-		G <- dim(L_PosterSamp)[1]
-		K <- dim(L_PosterSamp)[2] + 1
-		num_rec <- dim(L_PosterSamp)[3]
-		PPI <- NULL
-		for(k in seq_len(K-1)){
-			temp <- vapply(seq_len(G), function(j){
-					sum(L_PosterSamp[j,k, ] == 1) / num_rec
-				}, FUN.VALUE=1)
-			PPI <- cbind(PPI, temp)
-		}
-	
-		return(PPI)
-	}
-
 	kappa_fdr_matr <- NULL
-	kappa_set <- rev(1 - sort(unique(c(postprob_DE2(BUSfits)))))
+	kappa_set <- rev(1 - sort(unique(c(.postprob_DE2(BUSfits)))))
 	for(kappa in kappa_set){
-		fdr <- fdrDEindicator(L_PosterSamp, kappa=kappa)
+		fdr <- .fdrDEindicator(L_PosterSamp, kappa=kappa)
 		kappa_fdr_matr <- rbind(kappa_fdr_matr, c(kappa, fdr))
 		if(fdr > fdr_threshold){
 			break
@@ -540,13 +633,15 @@ postprob_DE_thr_fun <- function(BUSfits, fdr_threshold=0.1){
 	}
 	ind <- which(kappa_fdr_matr[ ,2] <= fdr_threshold)
 	ind2 <- which.max(kappa_fdr_matr[ind,2])
-	ind3 <- ind[ind2] # the index that has the maximum fdr but less than fdr_threshold
-	cat(c("Posterior probability threshold = ", 1-as.numeric(kappa_fdr_matr[ind3,1]),"\n"))
-	cat("The output is a scalar.\n")
+	ind3 <- ind[ind2] # the index that has the maximum fdr
+                      # but less than fdr_threshold
+	message(c("Posterior probability threshold = ",
+          1-as.numeric(kappa_fdr_matr[ind3,1]),"\n"))
+	message("The output is a scalar.\n")
 	return(1-as.numeric(kappa_fdr_matr[ind3,1])) #1-kappa
 }
 
-#estimate intrinsic gene indicators
+#Estimate intrinsic gene indicators
 estimate_IG_indicators <- function(BUSfits, postprob_DE_threshold = 0.5){
 	if(!is(BUSfits, "BUSfits")){
 		stop("BUSfits should be in the \"BUSfits\" class.\n")
@@ -565,23 +660,25 @@ estimate_IG_indicators <- function(BUSfits, postprob_DE_threshold = 0.5){
 	EstL <- PPI
 	EstL[PPI >= postprob_DE_threshold] <- 1
 	EstL[PPI < postprob_DE_threshold] <- 0
-	cat("The output format is a matrix.\n")
-	cat("Each row represents a gene, and each column corresponds to a subtype from 2 to K\n")
+	message("The output format is a matrix.\n")
+	message(paste0("Each row represents a gene, and each column",
+               " corresponds to a subtype from 2 to K\n"))
 	return(EstL)
 }
 
-#intrinsic gene index
+#Intrinsic gene index
 IG_index <- function(EstIGindicators){
 	ind <- which(rowSums(EstIGindicators) > 0)
-	cat(c(length(ind), "intrinsic genes are found.\n"))
-	cat("The output format is a vector showing the intrinsic gene indices.\n")
+	message(c(length(ind), "intrinsic genes are found.\n"))
+	message("The output format is a vector showing the intrinsic gene",
+            " indices.\n")
 	return(ind)
 }
 
 ################################################################
 # Adjusted Values
 ################################################################
-
+#calculate the adjusted gene expression values
 adjusted_values <- function(BUSfits, original_data){
 	if(!is(BUSfits, "BUSfits")){
 		stop("BUSfits should be in the \"BUSfits\" class.\n")
@@ -604,111 +701,131 @@ adjusted_values <- function(BUSfits, original_data){
 	for(b in 2:B){
 		matr <- matrix(NA, n_vec[b],G)
 		for(j in seq_len(n_vec[b])){
-			for(g in seq_len(G)){
-				matr[j,g] <- BUSfits$alpha[g] + BUSfits$mu[g, BUSfits$Subtypes[[b]][j]] + 
-						(Y[[b]][j,g] - BUSfits$alpha[g] - BUSfits$mu[g,BUSfits$Subtypes[[b]][j]]-BUSfits$gamma[g,b])/
-							sqrt(BUSfits$sigma_sq[g,b]/BUSfits$sigma_sq[g,1])
-			}
+			matr[j, ] <- BUSfits$alpha +
+                         BUSfits$mu[, BUSfits$Subtypes[[b]][j]] +
+						 (Y[[b]][j,] - BUSfits$alpha -
+                             BUSfits$mu[,BUSfits$Subtypes[[b]][j]] -
+                             BUSfits$gamma[,b]) /
+                          sqrt(BUSfits$sigma_sq[,b]/BUSfits$sigma_sq[,1])
 		}
 		Y_correct[[b]] <- t(matr)
 	} 
-	cat("The output format is a list with length equal to the batch number.\n")
-	cat("Each element of the list is the adjusted gene expression matrix.\n")
-	cat("In the matrix, each row represents a gene, and each column corresponds to a sample.\n")
+	message("The output format is a list with length equal to",
+            " the batch number.\n")
+	message("Each element of the list is the adjusted gene",
+            " expression matrix.\n")
+	message(paste0("In the matrix, each row represents a gene,",
+               " and each column corresponds to a sample.\n"))
 	return(Y_correct)
 }
 
 ##############################################################################
 # Useful Outputs from BUSfits
 ##############################################################################
+#obtain the subtype indicators for samples
 Subtypes <- function(BUSfits){
 	if(!is(BUSfits, "BUSfits")){
 		stop("BUSfits should be in the \"BUSfits\" class.\n")
 	}
 	B <- length(BUSfits$Subtypes)
 	for(b in seq_len(B)){
-		cat(c("Batch ", b, " samples' subtype indicators: ", BUSfits$Subtypes[[b]][1], 
+		message(c("Batch ", b, " samples' subtype indicators: ",
+            BUSfits$Subtypes[[b]][1],
 			BUSfits$Subtypes[[b]][2], BUSfits$Subtypes[[b]][3], "... ...\n"))
 	}
-	cat("The output format is a list with length equal to the batch number.\n")
-	cat("Each element of the list is a subtype indicator vector in that batch.\n")
+	message("The output format is a list with length",
+            " equal to the batch number.\n")
+	message(paste0("Each element of the list is a subtype indicator vector in",
+               " that batch.\n"))
 	return(BUSfits$Subtypes)
 }
 
+#obtain the baseline expression values
 baseline_expression_values <- function(BUSfits){
 	if(!is(BUSfits, "BUSfits")){
 		stop("BUSfits should be in the \"BUSfits\" class.\n")
 	}	
-	cat("The output format is a vector.\n")
+	message("The output format is a vector.\n")
 	return(BUSfits$alpha)
 }
 
+#obtain the subtype effects
 subtype_effects <- function(BUSfits){
 	if(!is(BUSfits, "BUSfits")){
 		stop("BUSfits should be in the \"BUSfits\" class.\n")
 	}
-	cat("The output format is a matrix.\n")
-	cat("Each row represents a gene, and each column corresponds to a subtype.\n")
+	message("The output format is a matrix.\n")
+	message(paste0("Each row represents a gene, and each column corresponds",
+               " to a subtype.\n"))
 	
 	return(BUSfits$mu)
 }
 
+#obtain the location batch effects
 location_batch_effects <- function(BUSfits){
 	if(!is(BUSfits, "BUSfits")){
 		stop("BUSfits should be in the \"BUSfits\" class.\n")
 	}
-	cat("The output format is a matrix.\n")
-	cat("Each row represents a gene, and each column corresponds to a batch.\n")
+	message("The output format is a matrix.\n")
+	message("Each row represents a gene, and each column",
+            " corresponds to a batch.\n")
 	return(BUSfits$gamma)
 }
 
+#obtain the scale batch effects
 scale_batch_effects <- function(BUSfits){
 	if(!is(BUSfits, "BUSfits")){
 		stop("BUSfits should be in the \"BUSfits\" class.\n")
 	}
 	G <- nrow(BUSfits$sigma_sq)
 	B <- ncol(BUSfits$sigma_sq)
-	cat("The output format is a matrix.\n")
-	cat("Each row represents a gene, and each column corresponds to a batch.\n")
+	message("The output format is a matrix.\n")
+	message(paste0("Each row represents a gene, and each column corresponds",
+               " to a batch.\n"))
 	tmp <- sqrt(BUSfits$sigma_sq / BUSfits$sigma_sq[,1])
 	return(tmp)
 }
 
+#obtain the BIC score
 BIC_BUS <- function(BUSfits){
-	cat("BIC is ", BUSfits$BIC, "\n")
-	cat("The output is a scalar.\n")
+	message("BIC is ", BUSfits$BIC, "\n")
+	message("The output is a scalar.\n")
 	return(BUSfits$BIC)
 }
 
-################################################################################
+##############################################################################
 # print and summary
-################################################################################
-
+##############################################################################
+#print BUSfits
 print.BUSfits <- function(x, ...){
 	BUSfits <- x
 	G <- nrow(BUSfits$sigma_sq)
 	B <- ncol(BUSfits$sigma_sq)
 	cat("Subtype indicators:\n")
 	for(b in seq_len(B)){
-		cat(c("   Batch ", b, " samples' subtype indicators: ", BUSfits$Subtypes[[b]][1], 
+		cat(c("   Batch ", b, " samples' subtype indicators: ",
+            BUSfits$Subtypes[[b]][1],
 			BUSfits$Subtypes[[b]][2], BUSfits$Subtypes[[b]][3], "... ...\n"))
 	}
 	cat("\n")
 	cat("Estimated location batch effects:\n")
 	for(b in seq_len(B)){
-		cat(c("   Batch ", b, " location batch effects are: ", BUSfits$gamma[1,b], 
+		cat(c("   Batch ", b, " location batch effects are: ",
+            BUSfits$gamma[1,b],
 			BUSfits$gamma[2,b], BUSfits$gamma[3,b], "... ...\n"))
 	}
 	cat("\n")
 	cat("Estimated scale batch effects:\n")
 	for(b in seq_len(B)){
-		cat(c("   Batch ", b, " scale batch effects are: ", sqrt(BUSfits$sigma_sq[1,b]/BUSfits$sigma_sq[1,1]), 
+		cat(c("   Batch ", b, " scale batch effects are: ",
+            sqrt(BUSfits$sigma_sq[1,b]/BUSfits$sigma_sq[1,1]),
 			sqrt(BUSfits$sigma_sq[2,b]/BUSfits$sigma_sq[2,1]), 
 			sqrt(BUSfits$sigma_sq[3,b]/BUSfits$sigma_sq[3,1]), "... ...\n"))
 	}
 	cat("\n")
 }
 
+#summarize BUSfits
 summary.BUSfits <- function(object, ...){
 	BUSfits <- object
 	G <- nrow(BUSfits$sigma_sq)
@@ -720,14 +837,20 @@ summary.BUSfits <- function(object, ...){
 	cat(c("K = ", K, " subtypes\n"))
 	cat(c("n.records = ", num_records," iterations are recorded.\n\n"))
 	cat("BUSfits is an R list that contains the following main elements:\n\n")
-	cat("   BUSfits$Subtypes : estimated subtype indicators, an R list with length B.\n")
-	cat("   BUSfits$pi : estimated subtype proportions across batches, a B by K matrix.\n")
-	cat("   BUSfits$alpha : estimated baseline expression levels, a vector with length G.\n")
-	cat("   BUSfits$gamma : estimated location batch effects, a G by B matrix.\n")
+	cat(paste0("   BUSfits$Subtypes : estimated subtype indicators,",
+               " an R list with length B.\n"))
+	cat(paste0("   BUSfits$pi : estimated subtype proportions across batches,",
+               " a B by K matrix.\n"))
+	cat(paste0("   BUSfits$alpha : estimated baseline expression levels,",
+               " a vector with length G.\n"))
+    cat(paste0("   BUSfits$gamma : estimated location batch",
+               " effects a G by B matrix.\n"))
 	cat("   BUSfits$mu : estimated subtype effects, a G by K matrix.\n")
-	cat("   BUSfits$sigma_sq : estimated variances across batches, a G by B matrix.\n")
+	cat(paste0("   BUSfits$sigma_sq : estimated variances across batches,",
+               " a G by B matrix.\n"))
 	cat("   BUSfits$BIC : estimated BIC, a scalar.\n")
-	cat("   BUSfits$L_PosterSamp : the posterior samples of the intrinsic gene indicators,\n")
+	cat(paste0("   BUSfits$L_PosterSamp : the posterior samples of the",
+               " intrinsic gene indicators,\n"))
 	cat("                          a G by K-1 by n.records array.\n")
 	cat("   For more output values, please use \"?BUSgibbs\"\n")
 	cat("\n")
@@ -736,8 +859,10 @@ summary.BUSfits <- function(object, ...){
 ###########################################################################
 # Calculate EPSR factors
 ###########################################################################
+
+#calculate EPSR factors for subtype effects
 calculate_EPSR_mu <- function(mu_PosterSamp_chain1, mu_PosterSamp_chain2){
-		cat("  calculating EPSR factors ...\n")		
+		message("  calculating EPSR factors ...\n")
 		G <- dim(mu_PosterSamp_chain1)[1]
 		K <- dim(mu_PosterSamp_chain1)[2]
 		num_records <- dim(mu_PosterSamp_chain1)[3]
@@ -751,9 +876,12 @@ calculate_EPSR_mu <- function(mu_PosterSamp_chain1, mu_PosterSamp_chain2){
 		
 		
 		mu_t_collect <- mu_t_record
-		W_var_temp <- array(NA, dim = c(2*num_chains, G, K)) #within-sequence variable
+        #within-sequence variable
+		W_var_temp <- array(NA, dim = c(2*num_chains, G, K))
 		W_var <- array(NA, dim = c(G, K))
-		B_var <- array(NA, dim = c(G, K)) #between-sequence variable
+        
+        #between-sequence variable
+		B_var <- array(NA, dim = c(G, K))
 		mean_chains <- array(NA, dim = c(2*num_chains, G, K))
 		EPSR <- array(NA, dim = c(G, K))
 
@@ -761,10 +889,14 @@ calculate_EPSR_mu <- function(mu_PosterSamp_chain1, mu_PosterSamp_chain2){
 		for(k in 2:K){
 			for(i in seq_len(num_chains)){
 				temp <- vapply(seq_len(G), function(g){
-						 c(  var(mu_t_collect[i, g, k, seq_len(num_records / 2)]),
-							var(mu_t_collect[i, g, k, (num_records / 2 + 1):(num_records)]),
-							 mean(mu_t_collect[i, g, k, seq_len(num_records / 2)]),
-							 mean(mu_t_collect[i, g, k, (num_records / 2 + 1):(num_records)]) )
+						 c(  var(mu_t_collect[i, g, k,
+                                              seq_len(num_records / 2)]),
+							 var(mu_t_collect[i, g, k,
+                                    (num_records / 2 + 1):(num_records)]),
+							 mean(mu_t_collect[i, g, k,
+                                     seq_len(num_records / 2)]),
+							 mean(mu_t_collect[i, g, k,
+                                    (num_records / 2 + 1):(num_records)]) )
 						}, FUN.VALUE=rep(-1, 4))
 				W_var_temp[2*(i-1)+1, ,k] <- temp[1, ]
 				W_var_temp[2*(i-1)+2, ,k] <- temp[2, ]
@@ -773,15 +905,17 @@ calculate_EPSR_mu <- function(mu_PosterSamp_chain1, mu_PosterSamp_chain2){
 			}
 			B_var[ , k] <- num_records / 2 * apply(mean_chains[ , ,k] , 2, var)
 			W_var[ , k] <- colMeans(W_var_temp[ , ,k])
-			EPSR[ , k] <- sqrt( (num_records / 2 - 1 + B_var[ ,k] / W_var[ ,k]) / (num_records / 2) )
+			EPSR[ , k] <- sqrt( (num_records / 2 - 1 + B_var[ ,k] /
+                                W_var[ ,k]) / (num_records / 2) )
 		}
 		return(EPSR)
 	
 }
 
-
-calculate_EPSR_gamma <- function(gamma_PosterSamp_chain1, gamma_PosterSamp_chain2){
-		cat("  calculating EPSR factors ...\n")
+#calculate EPSR factors for location batch effects
+calculate_EPSR_gamma <- function(gamma_PosterSamp_chain1,
+                                 gamma_PosterSamp_chain2){
+		message("  calculating EPSR factors ...\n")
 		B <- dim(gamma_PosterSamp_chain1)[1]
 		G <- dim(gamma_PosterSamp_chain1)[2]
 		num_records <- dim(gamma_PosterSamp_chain1)[3]
@@ -794,19 +928,25 @@ calculate_EPSR_gamma <- function(gamma_PosterSamp_chain1, gamma_PosterSamp_chain
 		gamma_t_record[2,,,] <- gamma_PosterSamp_chain2
 
 		gamma_t_collect <- gamma_t_record
-		W_var_temp <- array(NA, dim = c(2*num_chains, B, G)) #within-sequence variable
+        #within-sequence variable
+		W_var_temp <- array(NA, dim = c(2*num_chains, B, G))
 		W_var <- array(NA, dim = c(B, G))
-		B_var <- array(NA, dim = c(B, G)) #between-sequence variable
+        #between-sequence variable
+		B_var <- array(NA, dim = c(B, G))
 		mean_chains <- array(NA, dim = c(2*num_chains,B, G))
 		EPSR <- array(NA, dim = c(B, G))
 
 		for(b in 2:B){
 			for(i in seq_len(num_chains)){
 				 temp <- vapply(seq_len(G), function(g){
-						c( var(gamma_t_collect[i, b, g, seq_len(num_records / 2)]), 
-						var(gamma_t_collect[i, b, g, (num_records / 2 + 1):(num_records)]),
-				 		 mean(gamma_t_collect[i, b, g, seq_len(num_records / 2)]),
-						 mean(gamma_t_collect[i, b, g, (num_records / 2 + 1):(num_records)]) )
+						c( var(gamma_t_collect[i, b, g,
+                                        seq_len(num_records / 2)]),
+						   var(gamma_t_collect[i, b, g,
+                                   (num_records / 2 + 1):(num_records)]),
+				 		   mean(gamma_t_collect[i, b, g,
+                                         seq_len(num_records / 2)]),
+						   mean(gamma_t_collect[i, b, g,
+                                    (num_records / 2 + 1):(num_records)]) )
 						}, FUN.VALUE=rep(-1, 4))
 				W_var_temp[2*(i-1)+1,b, ] <- temp[1,]
 				W_var_temp[2*(i-1)+2,b, ] <- temp[2,]
@@ -815,16 +955,18 @@ calculate_EPSR_gamma <- function(gamma_PosterSamp_chain1, gamma_PosterSamp_chain
 			}
 			B_var[b, ] <- num_records / 2 * apply(mean_chains[ ,b, ], 2, var)
 			W_var[b, ] <- colMeans(W_var_temp[ ,b, ])
-			EPSR[b, ] <- sqrt( (num_records / 2 - 1 + B_var[b, ] / W_var[b, ]) / (num_records / 2) )
+			EPSR[b, ] <- sqrt( (num_records / 2 - 1 + B_var[b, ] / W_var[b, ]) /
+                         (num_records / 2) )
 		
 		}
 		return(t(EPSR))
 	
 }
 
-	
-calculate_EPSR_sigma_sq <- function(sigma_sq_PosterSamp_chain1, sigma_sq_PosterSamp_chain2){
-		cat("  calculating EPSR factors ...\n")
+#calculate EPSR factors for variances in each batch
+calculate_EPSR_sigma_sq <- function(sigma_sq_PosterSamp_chain1,
+                                    sigma_sq_PosterSamp_chain2){
+		message("  calculating EPSR factors ...\n")
 		B <- dim(sigma_sq_PosterSamp_chain1)[1]
 		G <- dim(sigma_sq_PosterSamp_chain1)[2]
 		num_records <- dim(sigma_sq_PosterSamp_chain1)[3]
@@ -839,19 +981,25 @@ calculate_EPSR_sigma_sq <- function(sigma_sq_PosterSamp_chain1, sigma_sq_PosterS
 		sigma_sq_t_record[2,,,] <- sigma_sq_PosterSamp_chain2
 	
 		sigma_sq_t_collect <- sigma_sq_t_record
-		W_var_temp <- array(NA, dim = c(2*num_chains, B, G)) #within-sequence variable
+        #within-sequence variable
+		W_var_temp <- array(NA, dim = c(2*num_chains, B, G))
 		W_var <- array(NA, dim = c(B, G))
-		B_var <- array(NA, dim = c(B, G)) #between-sequence variable
+        #between-sequence variable
+		B_var <- array(NA, dim = c(B, G))
 		mean_chains <- array(NA, dim = c(2*num_chains,B, G))
 		EPSR <- array(NA, dim = c(B, G))
 
 		for(b in seq_len(B)){
 			for(i in seq_len(num_chains)){
 				 temp <- vapply(seq_len(G), function(g){
-						c( var(sigma_sq_t_collect[i, b, g, seq_len(num_records / 2)]), 
-						var(sigma_sq_t_collect[i, b, g, (num_records / 2 + 1):(num_records)]),
-				 		 mean(sigma_sq_t_collect[i, b, g, seq_len(num_records / 2)]),
-						 mean(sigma_sq_t_collect[i, b, g, (num_records / 2 + 1):(num_records)]) )
+						c( var(sigma_sq_t_collect[i, b, g,
+                                 seq_len(num_records / 2)]),
+						   var(sigma_sq_t_collect[i, b, g,
+                                 (num_records / 2 + 1):(num_records)]),
+				 		   mean(sigma_sq_t_collect[i, b, g,
+                                  seq_len(num_records / 2)]),
+						   mean(sigma_sq_t_collect[i, b, g,
+                                 (num_records / 2 + 1):(num_records)]) )
 						}, FUN.VALUE=rep(-1, 4))
 				W_var_temp[2*(i-1)+1,b, ] <- temp[1,]
 				W_var_temp[2*(i-1)+2,b, ] <- temp[2,]
@@ -860,7 +1008,8 @@ calculate_EPSR_sigma_sq <- function(sigma_sq_PosterSamp_chain1, sigma_sq_PosterS
 			}
 			B_var[b, ] <- num_records / 2 * apply(mean_chains[ ,b, ], 2, var)
 			W_var[b, ] <- colMeans(W_var_temp[ ,b, ])
-			EPSR[b, ] <- sqrt( (num_records / 2 - 1 + B_var[b, ] / W_var[b, ]) / (num_records / 2) )
+			EPSR[b, ] <- sqrt( (num_records / 2 - 1 + B_var[b, ] / W_var[b, ]) /
+                               (num_records / 2) )
 		
 		}
 		return(t(EPSR))
@@ -872,17 +1021,19 @@ calculate_EPSR_sigma_sq <- function(sigma_sq_PosterSamp_chain1, sigma_sq_PosterS
 ########################################################################
 # Visualization
 ########################################################################
-
-
-visualize_data <- function(Data, title_name="Heatmap", gene_ind_set, color_key_range=seq(-0.5,8.5,1)){
+#visualize the gene expression data by stacking all gene expression matrices 
+visualize_data <- function(Data, title_name="Heatmap", gene_ind_set,
+                           color_key_range=seq(-0.5,8.5,1)){
 	B <- length(Data)
 	G <- nrow(Data[[1]])
 	n_vec <- NULL
 	for(b in seq_len(B)){
 		n_vec <- c(n_vec, ncol(Data[[b]]))
 	}
-	colfunc <- colorRampPalette(c("grey", "black")) 			#cell colors
-	color_batch_func <- colorRampPalette(c("skyblue", "slateblue4"))        #batch colors 
+    #cell colors
+	colfunc <- colorRampPalette(c("grey", "black"))
+    #batch colors
+	color_batch_func <- colorRampPalette(c("skyblue", "slateblue4"))
 
 	color_batch <- color_batch_func(B)
 
@@ -896,9 +1047,13 @@ visualize_data <- function(Data, title_name="Heatmap", gene_ind_set, color_key_r
 		Y <- cbind(Y, Data[[b]])
 	}
 	Y1 <- Y[gene_ind_set, ]
-	heatmap.2(Y1, col = colfunc(length(color_key_range)-1), scale = "none",key = TRUE, Colv=FALSE,Rowv=FALSE,
-	   density.info = "none", trace = "none", dendrogram="none",
-	 ylab = paste0(length(gene_ind_set), " Genes"), xlab = paste0(sum(n_vec)," Samples"),   
-	main = title_name,labRow=FALSE,labCol=FALSE,breaks=color_key_range, symkey = FALSE, ColSideColors = color_batch2)
+	heatmap.2(Y1, col = colfunc(length(color_key_range)-1), scale = "none",
+              key = TRUE, Colv=FALSE,Rowv=FALSE,
+	          density.info = "none", trace = "none", dendrogram="none",
+	          ylab = paste0(length(gene_ind_set), " Genes"),
+              xlab = paste0(sum(n_vec)," Samples"),
+	          main = title_name,labRow=FALSE,labCol=FALSE,
+              breaks=color_key_range, symkey = FALSE,
+              ColSideColors = color_batch2)
 }
 
