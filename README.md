@@ -21,7 +21,7 @@ devtools::install_github("XiangyuLuo/BUScorrect", build_vignettes = TRUE)
 Please refer to the vignetee for detailed function instructions using
 
 ```
-vignette("BUScorrect")
+vignette("BUScorrect_user_guide")
 ```
 
 ## References
