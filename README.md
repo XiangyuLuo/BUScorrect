@@ -10,6 +10,13 @@ Various batch effects correction methods have been proposed when the subtype inf
 
 Here, the R package BUScorrect fits a Bayesian hierarchical model, the Batch-effects-correction-with-Unknown-Subtypes model (BUS), to correct batch effects in the presence of unknown subtypes [4]. BUS is capable of (a) correcting batch effects explicitly, (b) grouping samples that share similar characteristics into subtypes, (c) identifying features that distinguish subtypes, and (d) enjoying a linear-order computation complexity. After correcting the batch effects with BUS, the corrected value can be used for other analysis as if all samples are measured in a single batch. BUS can integrate batches measured from different platforms and allow subtypes to be measured in some but not all of the batches as long as the experimental design fulfils the conditions listed in [4].
 
+## Installation 
+Although this R package is under review on the Bioconductor platform, you can still install it following the R commands below.
+
+```
+devtools::install_github("XiangyuLuo/BUScorrect")
+```
+
 ## User's Guide
 Please refer to the "BUScorrect\_user\_guide.pdf" vignetee for detailed function instructions.
 
