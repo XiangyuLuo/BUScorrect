@@ -18,7 +18,7 @@ devtools::install_github("XiangyuLuo/BUScorrect")
 ```
 
 ## User's Guide
-Please refer to the "BUScorrect\_user\_guide.pdf" vignetee for detailed function instructions.
+Please refer to the "BUScorrect\_user\_guide.pdf" vignetee after installation for detailed function instructions.
 
 ## References
 1. Leek, Jeffrey T., et al. "Tackling the widespread and critical impact of batch effects in high-throughput data." *Nature Reviews Genetics* 11.10 (2010): 733.
