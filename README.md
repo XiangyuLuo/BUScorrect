@@ -12,15 +12,15 @@ Here, the R package BUScorrect fits a Bayesian hierarchical model, the Batch-eff
 
 ## Installation 
 Although this R package is still under review on the Bioconductor platform, you can install its latest version following the R command:
-
+```
 devtools::install_github("XiangyuLuo/BUScorrect", build_vignettes = TRUE)
-
+```
 
 ## User's Guide
 Please refer to the vignetee for detailed function instructions using
-
+```
 vignette("BUScorrect_user_guide")
-
+```
 
 ## References
 1. Leek, Jeffrey T., et al. "Tackling the widespread and critical impact of batch effects in high-throughput data." *Nature Reviews Genetics* 11.10 (2010): 733.
