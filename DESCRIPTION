@@ -1,7 +1,7 @@
 Package: BUScorrect
 Type: Package
 Title: Batch Effects Correction with Unknown Subtypes
-Version: 0.99.9
+Version: 0.99.10
 Date: 2018-06-07
 Author: Xiangyu Luo <xyluo1991@gmail.com>, Yingying Wei <yweicuhk@gmail.com>
 Maintainer: Xiangyu Luo <xyluo1991@gmail.com>
