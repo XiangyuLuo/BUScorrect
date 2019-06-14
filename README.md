@@ -25,9 +25,13 @@ Please refer to the vignetee for detailed function instructions using
 ```
 browseVignettes("BUScorrect")
 ```
+## Citation
+Xiangyu Luo & Yingying Wei (2019) Batch Effects Correction with Unknown Subtypes, Journal of the American Statistical Association, 114:526, 581-594, DOI: 10.1080/01621459.2018.1497494
 
 ## References
 1. Leek, Jeffrey T., et al. "Tackling the widespread and critical impact of batch effects in high-throughput data." *Nature Reviews Genetics* 11.10 (2010): 733.
 2. Johnson, W. Evan, Cheng Li, and Ariel Rabinovic. "Adjusting batch effects in microarray expression data using empirical Bayes methods." *Biostatistics* 8.1 (2007): 118-127.
 3. Leek, Jeffrey T., and John D. Storey. "Capturing heterogeneity in gene expression studies by surrogate variable analysis." *PLoS genetics* 3.9 (2007): e161.
-4. Luo, Xiangyu, and Yingying Wei. "Batch effects correction with unknown subtypes". *Journal of the American Statistical Association*. Accepted. 
+4. Xiangyu Luo & Yingying Wei (2019) Batch Effects Correction with Unknown Subtypes, Journal of the American Statistical Association, 114:526, 581-594, DOI: 10.1080/01621459.2018.1497494
+
+
